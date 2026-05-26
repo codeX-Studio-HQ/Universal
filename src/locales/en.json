@@ -1,0 +1,72 @@
+{
+  "search": {
+    "placeholder": "Search apps, files, calculate, commands...",
+    "placeholder2": "Type \"lock\" to lock screen...",
+    "placeholder3": "Type \"shutdown\" or \"reboot\"...",
+    "placeholder4": "Search web with any query..."
+  },
+  "sections": {
+    "applications": "Applications",
+    "files": "Files",
+    "web_search": "Web Search",
+    "commands": "Commands",
+    "calculator": "Calculator",
+    "recent": "Recent Files"
+  },
+  "actions": {
+    "launch": "Launch",
+    "open": "Open",
+    "search": "Search",
+    "execute": "Execute",
+    "copy": "Copy"
+  },
+  "types": {
+    "app": "Application",
+    "file": "File",
+    "web_search": "Google Search",
+    "system": "System Command",
+    "calculator": "Calculator",
+    "recent": "Recent"
+  },
+  "welcome": {
+    "title": "Universal Launcher",
+    "subtitle": "Everything at your fingertips",
+    "chips": ["Fuzzy Search", "Calculator", "Web Search", "Commands"]
+  },
+  "footer": {
+    "navigate": "Navigate",
+    "open": "Open",
+    "close": "Close"
+  },
+  "settings": {
+    "title": "Settings",
+    "appearance": "Appearance",
+    "colorTheme": "Color Theme",
+    "language": "Language",
+    "startup": "Startup",
+    "startWithSystem": "Start with system",
+    "about": "About",
+    "version": "Version",
+    "developer": "Developer",
+    "engine": "Engine",
+    "madeWith": "Made with ❤️",
+    "by": "by"
+  },
+  "metadata": {
+    "name": "Name",
+    "where": "Where",
+    "type": "Type",
+    "path": "Path"
+  },
+  "suggestions": {
+    "lock": "Lock screen",
+    "shutdown": "Shut down",
+    "reboot": "Restart",
+    "calculator": "Calculator",
+    "web": "Web search"
+  },
+  "common": {
+    "suggestions": "Suggestions",
+    "metadata": "Metadata"
+  }
+}

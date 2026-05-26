@@ -1,0 +1,72 @@
+{
+  "search": {
+    "placeholder": "Apps, Dateien, Rechner, Befehle...",
+    "placeholder2": "\"sperren\" zum Sperren...",
+    "placeholder3": "\"herunterfahren\" oder \"neustart\"...",
+    "placeholder4": "Im Web suchen..."
+  },
+  "sections": {
+    "applications": "Anwendungen",
+    "files": "Dateien",
+    "web_search": "Websuche",
+    "commands": "Befehle",
+    "calculator": "Rechner",
+    "recent": "Zuletzt verwendet"
+  },
+  "actions": {
+    "launch": "Starten",
+    "open": "Öffnen",
+    "search": "Suchen",
+    "execute": "Ausführen",
+    "copy": "Kopieren"
+  },
+  "types": {
+    "app": "Anwendung",
+    "file": "Datei",
+    "web_search": "Google Suche",
+    "system": "Systembefehl",
+    "calculator": "Rechner",
+    "recent": "Kürzlich"
+  },
+  "welcome": {
+    "title": "Universal Launcher",
+    "subtitle": "Alles auf einen Klick",
+    "chips": ["Intelligente Suche", "Rechner", "Websuche", "Befehle"]
+  },
+  "footer": {
+    "navigate": "Navigieren",
+    "open": "Öffnen",
+    "close": "Schließen"
+  },
+  "settings": {
+    "title": "Einstellungen",
+    "appearance": "Aussehen",
+    "colorTheme": "Farbthema",
+    "language": "Sprache",
+    "startup": "Autostart",
+    "startWithSystem": "Mit System starten",
+    "about": "Über",
+    "version": "Version",
+    "developer": "Entwickler",
+    "engine": "Engine",
+    "madeWith": "Gemacht mit ❤️",
+    "by": "von"
+  },
+  "metadata": {
+    "name": "Name",
+    "where": "Ort",
+    "type": "Typ",
+    "path": "Pfad"
+  },
+  "suggestions": {
+    "lock": "Sperren",
+    "shutdown": "Herunterfahren",
+    "reboot": "Neustart",
+    "calculator": "Rechner",
+    "web": "Websuche"
+  },
+  "common": {
+    "suggestions": "Vorschläge",
+    "metadata": "Metadaten"
+  }
+}

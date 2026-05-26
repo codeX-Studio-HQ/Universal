@@ -1,0 +1,72 @@
+{
+  "search": {
+    "placeholder": "Uygulama, dosya, hesap, komut ara...",
+    "placeholder2": "Ekran kilitlemek için \"kilit\" yaz...",
+    "placeholder3": "Kapatmak için \"kapat\" yaz...",
+    "placeholder4": "Web'de aramak için bir şey yaz..."
+  },
+  "sections": {
+    "applications": "Uygulamalar",
+    "files": "Dosyalar",
+    "web_search": "Web Arama",
+    "commands": "Komutlar",
+    "calculator": "Hesap Makinesi",
+    "recent": "Son Kullanılanlar"
+  },
+  "actions": {
+    "launch": "Başlat",
+    "open": "Aç",
+    "search": "Ara",
+    "execute": "Çalıştır",
+    "copy": "Kopyala"
+  },
+  "types": {
+    "app": "Uygulama",
+    "file": "Dosya",
+    "web_search": "Google Arama",
+    "system": "Sistem Komutu",
+    "calculator": "Hesap Makinesi",
+    "recent": "Son Kullanılan"
+  },
+  "welcome": {
+    "title": "Universal Launcher",
+    "subtitle": "Her şey parmaklarınızın ucunda",
+    "chips": ["Akıllı Arama", "Hesap Makinesi", "Web Arama", "Komutlar"]
+  },
+  "footer": {
+    "navigate": "Gezin",
+    "open": "Aç",
+    "close": "Kapat"
+  },
+  "settings": {
+    "title": "Ayarlar",
+    "appearance": "Görünüm",
+    "colorTheme": "Renk Teması",
+    "language": "Dil",
+    "startup": "Başlangıç",
+    "startWithSystem": "Sistemle başlat",
+    "about": "Hakkında",
+    "version": "Sürüm",
+    "developer": "Geliştirici",
+    "engine": "Motor",
+    "madeWith": "❤️ ile",
+    "by": "tarafından yapıldı"
+  },
+  "metadata": {
+    "name": "Ad",
+    "where": "Konum",
+    "type": "Tür",
+    "path": "Yol"
+  },
+  "suggestions": {
+    "lock": "Ekranı kilitle",
+    "shutdown": "Bilgisayarı kapat",
+    "reboot": "Yeniden başlat",
+    "calculator": "Hesap makinesi",
+    "web": "Web'de ara"
+  },
+  "common": {
+    "suggestions": "Öneriler",
+    "metadata": "Meta Veri"
+  }
+}
