@@ -4,7 +4,7 @@
 Made With ❤️ by **codeX** Studio  
 > **Developer:** Wrenchiz  
 > **Version:** Beta v1.0  
-> **Download Exe for Windows (Portable):** []()
+> **Download Exe for Windows (Portable):** []()  
 > **Download Deb for Linux (Portable):** []()   
 
 ---
