@@ -4,8 +4,8 @@
 Made With ❤️ by **codeX** Studio  
 > **Developer:** Wrenchiz  
 > **Version:** Beta v1.0  
-> **Download Exe for Windows (Portable):** [Universal Launcher Beta v1.0 for Windows (Portable)](https://github.com/codeX-Studio-HQ/Universal/releases/download/v1.0/Universal_Launcher_Beta_v1_0_Windows_Portable.zip)  
-> **Download Deb for Linux:** [Universal Launcher Beta v1.0 for Linux](https://github.com/codeX-Studio-HQ/Universal/releases/download/v1.0/Universal_Launcher_Beta_v1_0_Linux.zip)   
+> **Download for Windows (Portable):** [Universal Launcher Beta v1.0 for Windows (Portable)](https://github.com/codeX-Studio-HQ/Universal/releases/download/v1.0/Universal_Launcher_Beta_v1_0_Windows_Portable.zip)  
+> **Download for Linux:** [Universal Launcher Beta v1.0 for Linux](https://github.com/codeX-Studio-HQ/Universal/releases/download/v1.0/Universal_Launcher_Beta_v1_0_Linux.zip)   
 
 ---
 
