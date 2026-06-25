@@ -11,23 +11,29 @@
     "web_search": "Web Search",
     "commands": "Commands",
     "calculator": "Calculator",
-    "recent": "Recent Files"
+    "recent": "Recent Files",
+    "youtube_search": "YouTube"
   },
   "actions": {
-    "launch": "Launch",
-    "open": "Open",
-    "search": "Search",
-    "execute": "Execute",
-    "copy": "Copy"
-  },
+  "launch": "Launch",
+  "open": "Open",
+  "search": "Search",
+  "execute": "Execute",
+  "copy": "Copy",
+  "youtube_search": "Search on YouTube",
+  "web_search": "Search on Web",
+  "open_in_browser": "Open in Browser"
+},
   "types": {
-    "app": "Application",
-    "file": "File",
-    "web_search": "Google Search",
-    "system": "System Command",
-    "calculator": "Calculator",
-    "recent": "Recent"
-  },
+  "app": "Application",
+  "file": "File",
+  "web_search": "Google Search",
+  "system": "System Command",
+  "calculator": "Calculator",
+  "recent": "Recent",
+  "youtube_search": "YouTube Search",
+  "command": "Command"
+},
   "welcome": {
     "title": "Universal Launcher",
     "subtitle": "Everything at your fingertips",
@@ -52,6 +58,32 @@
     "madeWith": "Made with ❤️",
     "by": "by"
   },
+  "systemInfo": {
+  "title": "System Information",
+  "os": "Operating System",
+  "hostname": "Computer Name",
+  "uptime": "Uptime",
+  "loadavg": "Load Average",
+  "cpu": "Processor",
+  "cores": "Cores",
+  "ram": "RAM",
+  "swap": "Swap",
+  "disk": "Disk",
+  "temperature": "CPU Temperature",
+  "percent_used": "% Used",
+  "percent_full": "% Full",
+  "loading": "Loading system information..."
+},
+"themes": {
+    "blue": "Ocean Blue",
+    "violet": "Deep Violet",
+    "emerald": "Emerald",
+    "rose": "Rose Red",
+    "amber": "Amber",
+    "midnight": "Midnight Blue",
+    "neon": "Neon Pink",
+    "arctic": "Arctic Ice"
+  },
   "metadata": {
     "name": "Name",
     "where": "Where",
@@ -59,14 +91,32 @@
     "path": "Path"
   },
   "suggestions": {
-    "lock": "Lock screen",
-    "shutdown": "Shut down",
-    "reboot": "Restart",
-    "calculator": "Calculator",
-    "web": "Web search"
-  },
+  "lock": "Lock screen",
+  "shutdown": "Shut down",
+  "reboot": "Restart",
+  "calculator": "Calculator",
+  "web": "Web search",
+  "terminal": "Run terminal command"
+},
   "common": {
-    "suggestions": "Suggestions",
-    "metadata": "Metadata"
+    "copied": "Copied!",
+  "suggestions": "Suggestions",
+  "metadata": "Metadata",
+  "emojis": "Emojis",
+  "systemInfo": "System Info",
+  "apps": "Apps",
+  "files": "Files",
+  "emojiCategories": {
+    "faces": "Faces & Expressions",
+    "hands": "Hands & Body",
+    "hearts": "Hearts & Emotions",
+    "people": "People & Family",
+    "animals": "Animals",
+    "food": "Food & Drink",
+    "travel": "Travel & Transport",
+    "sports": "Sports & Activities",
+    "objects": "Objects & Symbols",
+    "nature": "Nature & Weather"
   }
+}
 }

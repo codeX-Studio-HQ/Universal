@@ -11,23 +11,29 @@
     "web_search": "Websuche",
     "commands": "Befehle",
     "calculator": "Rechner",
-    "recent": "Zuletzt verwendet"
+    "recent": "Zuletzt verwendet",
+    "youtube_search": "YouTube"
   },
   "actions": {
-    "launch": "Starten",
-    "open": "Öffnen",
-    "search": "Suchen",
-    "execute": "Ausführen",
-    "copy": "Kopieren"
-  },
+  "launch": "Starten",
+  "open": "Öffnen",
+  "search": "Suchen",
+  "execute": "Ausführen",
+  "copy": "Kopieren",
+  "youtube_search": "Auf YouTube suchen",
+  "web_search": "Im Web suchen",
+  "open_in_browser": "Im Browser öffnen"
+},
   "types": {
-    "app": "Anwendung",
-    "file": "Datei",
-    "web_search": "Google Suche",
-    "system": "Systembefehl",
-    "calculator": "Rechner",
-    "recent": "Kürzlich"
-  },
+  "app": "Anwendung",
+  "file": "Datei",
+  "web_search": "Google Suche",
+  "system": "Systembefehl",
+  "calculator": "Rechner",
+  "recent": "Kürzlich",
+  "youtube_search": "YouTube Suche",
+  "command": "Befehl"
+},
   "welcome": {
     "title": "Universal Launcher",
     "subtitle": "Alles auf einen Klick",
@@ -52,6 +58,32 @@
     "madeWith": "Gemacht mit ❤️",
     "by": "von"
   },
+  "systemInfo": {
+  "title": "Systeminformationen",
+  "os": "Betriebssystem",
+  "hostname": "Computername",
+  "uptime": "Betriebsdauer",
+  "loadavg": "Lastdurchschnitt",
+  "cpu": "Prozessor",
+  "cores": "Kerne",
+  "ram": "RAM",
+  "swap": "Swap",
+  "disk": "Festplatte",
+  "temperature": "CPU-Temperatur",
+  "percent_used": "% verwendet",
+  "percent_full": "% voll",
+  "loading": "Systeminformationen werden geladen..."
+},
+"themes": {
+    "blue": "Ozeanblau",
+    "violet": "Tiefviolett",
+    "emerald": "Smaragdgrün",
+    "rose": "Rosenrot",
+    "amber": "Bernstein",
+    "midnight": "Mitternachtsblau",
+    "neon": "Neonrosa",
+    "arctic": "Arktisches Eis"
+  },
   "metadata": {
     "name": "Name",
     "where": "Ort",
@@ -59,14 +91,32 @@
     "path": "Pfad"
   },
   "suggestions": {
-    "lock": "Sperren",
-    "shutdown": "Herunterfahren",
-    "reboot": "Neustart",
-    "calculator": "Rechner",
-    "web": "Websuche"
-  },
+  "lock": "Bildschirm sperren",
+  "shutdown": "Herunterfahren",
+  "reboot": "Neustart",
+  "calculator": "Rechner",
+  "web": "Websuche",
+  "terminal": "Terminalbefehl ausführen"
+},
   "common": {
-    "suggestions": "Vorschläge",
-    "metadata": "Metadaten"
+    "copied": "Kopiert!",
+  "suggestions": "Vorschläge",
+  "metadata": "Metadaten",
+  "emojis": "Emojis",
+  "systemInfo": "Systeminfo",
+  "apps": "Apps",
+  "files": "Dateien",
+  "emojiCategories": {
+    "faces": "Gesichter & Ausdrücke",
+    "hands": "Hände & Körper",
+    "hearts": "Herzen & Emotionen",
+    "people": "Menschen & Familie",
+    "animals": "Tiere",
+    "food": "Essen & Trinken",
+    "travel": "Reisen & Verkehr",
+    "sports": "Sport & Aktivitäten",
+    "objects": "Objekte & Symbole",
+    "nature": "Natur & Wetter"
   }
+}
 }

@@ -11,23 +11,29 @@
     "web_search": "Web Arama",
     "commands": "Komutlar",
     "calculator": "Hesap Makinesi",
-    "recent": "Son Kullanılanlar"
+    "recent": "Son Kullanılanlar",
+    "youtube_search": "YouTube"
   },
   "actions": {
-    "launch": "Başlat",
-    "open": "Aç",
-    "search": "Ara",
-    "execute": "Çalıştır",
-    "copy": "Kopyala"
-  },
-  "types": {
-    "app": "Uygulama",
-    "file": "Dosya",
-    "web_search": "Google Arama",
-    "system": "Sistem Komutu",
-    "calculator": "Hesap Makinesi",
-    "recent": "Son Kullanılan"
-  },
+  "launch": "Başlat",
+  "open": "Aç",
+  "search": "Ara",
+  "execute": "Çalıştır",
+  "copy": "Kopyala",
+  "youtube_search": "YouTube'da Ara",
+  "web_search": "Web'de Ara",
+  "open_in_browser": "Tarayıcıda Aç"
+},
+ "types": {
+  "app": "Uygulama",
+  "file": "Dosya",
+  "web_search": "Google Arama",
+  "system": "Sistem Komutu",
+  "calculator": "Hesap Makinesi",
+  "recent": "Son Kullanılan",
+  "youtube_search": "YouTube Arama",
+  "command": "Komut"
+},
   "welcome": {
     "title": "Universal Launcher",
     "subtitle": "Her şey parmaklarınızın ucunda",
@@ -52,6 +58,32 @@
     "madeWith": "❤️ ile",
     "by": "tarafından yapıldı"
   },
+  "systemInfo": {
+  "title": "Sistem Bilgisi",
+  "os": "İşletim Sistemi",
+  "hostname": "Bilgisayar Adı",
+  "uptime": "Çalışma Süresi",
+  "loadavg": "Yük Ortalaması",
+  "cpu": "İşlemci",
+  "cores": "Çekirdek",
+  "ram": "RAM",
+  "swap": "Swap",
+  "disk": "Disk",
+  "temperature": "CPU Sıcaklığı",
+  "percent_used": "% Kullanılıyor",
+  "percent_full": "% Dolu",
+  "loading": "Sistem bilgileri yükleniyor..."
+},
+"themes": {
+    "blue": "Okyanus Mavisi",
+    "violet": "Derin Mor",
+    "emerald": "Zümrüt Yeşili",
+    "rose": "Gül Kırmızısı",
+    "amber": "Kehribar",
+    "midnight": "Gece Mavisi",
+    "neon": "Neon Pembe",
+    "arctic": "Kutup Buzu"
+  },
   "metadata": {
     "name": "Ad",
     "where": "Konum",
@@ -59,14 +91,32 @@
     "path": "Yol"
   },
   "suggestions": {
-    "lock": "Ekranı kilitle",
-    "shutdown": "Bilgisayarı kapat",
-    "reboot": "Yeniden başlat",
-    "calculator": "Hesap makinesi",
-    "web": "Web'de ara"
-  },
+  "lock": "Ekranı kilitle",
+  "shutdown": "Bilgisayarı kapat",
+  "reboot": "Yeniden başlat",
+  "calculator": "Hesap makinesi",
+  "web": "Web'de ara",
+  "terminal": "Terminal komutu çalıştır"
+},
   "common": {
-    "suggestions": "Öneriler",
-    "metadata": "Meta Veri"
+    "copied": "Kopyalandı!",
+  "suggestions": "Öneriler",
+  "metadata": "Meta Veri",
+  "emojis": "Emojiler",
+  "systemInfo": "Sistem Bilgisi",
+  "apps": "Uygulama",
+  "files": "Dosya",
+  "emojiCategories": {
+    "faces": "Yüz İfadeleri",
+    "hands": "Eller & Vücut",
+    "hearts": "Kalpler & Duygular",
+    "people": "İnsanlar & Aile",
+    "animals": "Hayvanlar",
+    "food": "Yiyecek & İçecek",
+    "travel": "Seyahat & Ulaşım",
+    "sports": "Spor & Aktiviteler",
+    "objects": "Nesneler & Semboller",
+    "nature": "Doğa & Hava"
   }
+}
 }

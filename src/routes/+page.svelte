@@ -19,12 +19,15 @@
   }
 
   const THEMES = {
-    blue:   { name: 'Ocean Blue',   accent: '#3d7fff', accentRgb: '61,127,255',  bg1: '#0e1628', bg2: '#080d1a', glow: '30,80,200' },
-    violet: { name: 'Deep Violet',  accent: '#8b5cf6', accentRgb: '139,92,246',  bg1: '#120e28', bg2: '#0a0814', glow: '90,40,180' },
-    emerald:{ name: 'Emerald',      accent: '#10b981', accentRgb: '16,185,129',  bg1: '#0a1e18', bg2: '#060f0d', glow: '10,120,80'  },
-    rose:   { name: 'Rose Red',     accent: '#e5383b', accentRgb: '229,56,59',   bg1: '#1e0e0e', bg2: '#120808', glow: '180,30,30' },
-    amber:  { name: 'Amber',        accent: '#f59e0b', accentRgb: '245,158,11',  bg1: '#1a1408', bg2: '#0f0c04', glow: '160,100,10' },
-  };
+  blue:   { key: 'blue',   accent: '#3d7fff', accentRgb: '61,127,255',  bg1: '#0e1628', bg2: '#080d1a', glow: '30,80,200' },
+  violet: { key: 'violet', accent: '#8b5cf6', accentRgb: '139,92,246',  bg1: '#120e28', bg2: '#0a0814', glow: '90,40,180' },
+  emerald:{ key: 'emerald',accent: '#10b981', accentRgb: '16,185,129',  bg1: '#0a1e18', bg2: '#060f0d', glow: '10,120,80'  },
+  rose:   { key: 'rose',   accent: '#e5383b', accentRgb: '229,56,59',   bg1: '#1e0e0e', bg2: '#120808', glow: '180,30,30' },
+  amber:  { key: 'amber',  accent: '#f59e0b', accentRgb: '245,158,11',  bg1: '#1a1408', bg2: '#0f0c04', glow: '160,100,10' },
+  midnight:{ key: 'midnight', accent: '#1e3a5f', accentRgb: '30,58,95',  bg1: '#060d1a', bg2: '#020610', glow: '20,40,80' },
+  neon:   { key: 'neon',   accent: '#ec4899', accentRgb: '236,72,153',  bg1: '#1a0814', bg2: '#0f040a', glow: '200,50,130' },
+  arctic: { key: 'arctic', accent: '#38bdf8', accentRgb: '56,189,248',  bg1: '#081820', bg2: '#040c10', glow: '30,150,200' },
+};
 
   let currentTheme = 'blue';
   let theme = THEMES[currentTheme];
@@ -51,6 +54,11 @@
   let loading = false;
   let inputEl;
   let showSettings = false;
+  let showSysInfo = false;
+  let showEmoji = false;
+let copiedText = '';
+let showCopied = false;
+  let systemInfo = null;
   let recentFiles = [];
   let bodyVisible = false;
 
@@ -83,7 +91,7 @@
   }
 
   const sl = type => t.sections[type] || type;
-  const al = item => t.actions[item?.result_type] || 'Open';
+  const al = item => t.actions[item?.result_type] || t.actions.open || 'Open';
   const tl = type => t.types[type] || type;
 
   onMount(async () => {
@@ -99,6 +107,13 @@
     await tick();
     setTimeout(() => bodyVisible = true, 30);
     loadAutostart();
+    loadShortcut();
+
+    try {
+  const stats = await invoke('get_index_stats');
+  totalApps = stats.apps;
+  totalFiles = stats.files;
+} catch {}
 
     try { recentFiles = await invoke('get_recent_files'); }
     catch { recentFiles = []; }
@@ -121,6 +136,7 @@
     loading = false;
   }
 
+
   async function selectResult(item) {
     try {
       if (item.result_type === 'app') await invoke('open_app', { path: item.path });
@@ -128,33 +144,54 @@
       else if (item.result_type === 'web_search') await invoke('web_search', { query: item.path });
       else if (item.result_type === 'system') await invoke('system_command', { cmd: item.path });
       else if (item.result_type === 'recent') { query = item.name; await handleInput(); return; }
+      else if (item.result_type === 'youtube_search') await invoke('youtube_search', { query: item.path });
+      else if (item.result_type === 'emoji') await invoke('copy_to_clipboard', { text: item.path });
+      else if (item.result_type === 'command') {
+        const output = await invoke('execute_command', { cmd: item.path });
+        alert(output);
+      }
       reset();
     } catch (e) { console.error(e); }
   }
 
   function reset() {
-    query = ''; results = []; selectedIndex = 0; showSettings = false;
+    query = ''; results = []; selectedIndex = 0; showSettings = false; showSysInfo = false; showEmoji = false;
     inputEl?.focus();
   }
 
   function handleKeydown(e) {
     if (e.key === 'Escape') { reset(); return; }
-    if (showSettings) return;
+    if (showSettings || showSysInfo) return;
     if (e.key === 'ArrowDown') { e.preventDefault(); selectedIndex = Math.min(selectedIndex + 1, results.length - 1); scrollToSelected(); }
     else if (e.key === 'ArrowUp') { e.preventDefault(); selectedIndex = Math.max(selectedIndex - 1, 0); scrollToSelected(); }
     else if (e.key === 'Enter') { if (results[selectedIndex]) selectResult(results[selectedIndex]); }
   }
 
   function scrollToSelected() {
-  const el = document.querySelector('.result-item.selected');
-  if (el) {
-    el.scrollIntoView({ block: 'nearest', behavior: 'instant' });
+    const el = document.querySelector('.result-item.selected');
+    if (el) { el.scrollIntoView({ block: 'nearest', behavior: 'instant' }); }
   }
-}
 
   $: if (query === '') { results = []; selectedIndex = 0; }
 
-  let autostart = false;
+  let totalApps = 0;
+let totalFiles = 0;
+
+  let currentShortcut = 'ctrl+space';
+
+async function loadShortcut() {
+  try { currentShortcut = await invoke('get_shortcut'); }
+  catch { currentShortcut = 'ctrl+space'; }
+}
+
+async function changeShortcut(key) {
+  if (key === currentShortcut) return;
+  currentShortcut = key;
+  await invoke('set_shortcut', { shortcut: key });
+  alert('Kısayol kaydedildi. Değişikliğin etkili olması için uygulamayı yeniden başlatın.');
+}
+
+  let autostart = true;
 
   async function loadAutostart() {
     try { autostart = await invoke('get_autostart'); }
@@ -172,7 +209,81 @@
     gearSpinning = true;
     setTimeout(() => gearSpinning = false, 500);
     showSettings = !showSettings;
+    showSysInfo = false;
+    showEmoji = false; 
   }
+
+  async function toggleSysInfo() {
+    showSettings = false;
+    showEmoji = false;
+    showSysInfo = !showSysInfo;
+    if (showSysInfo) {
+      try { systemInfo = await invoke('get_system_info'); }
+      catch { systemInfo = 'Error loading system info'; }
+    }
+  }
+
+  function toggleEmoji() {
+  showSettings = false;
+  showSysInfo = false;
+  showEmoji = !showEmoji;
+}
+
+$: EMOJI_CATEGORIES = [
+    {
+      title: t.common.emojiCategories?.faces || "Yüz İfadeleri",
+      emojis: ['😀','😃','😄','😁','😅','😂','🤣','😊','😇','🙂','😉','😌','😍','🥰','😘','😗','😋','😛','😜','🤪','😝','🤑','🤗','🤭','🤫','🤔','🤐','🤨','😐','😑','😶','😏','😒','🙄','😬','😮‍💨','🤥','😔','😪','🤤','😴','😷','🤒','🤕','🤢','🤮','🤧','🥵','🥶','🥴','😵','🤯','🤠','🥳','🥸','😎','🤓','🧐','😕','😟','🙁','😮','😯','😲','😳','🥺','😦','😧','😨','😰','😥','😢','😭','😱','😖','😣','😞','😓','😩','😫','🥱','😤','😡','😠','🤬','😈','👿','💀','☠️','💩','🤡','👹','👺','👻','👽','👾','🤖']
+    },
+    {
+      title: t.common.emojiCategories?.hands || "Eller & Vücut",
+      emojis: ['👋','🤚','🖐️','✋','🖖','👌','🤌','🤏','✌️','🤞','🤟','🤘','🤙','👈','👉','👆','🖕','👇','☝️','👍','👎','✊','👊','🤛','🤜','👏','🙌','👐','🤲','🤝','🙏','✍️','💅','🤳','💪','🦵','🦶','👂','🦻','👃']
+    },
+    {
+      title: t.common.emojiCategories?.hearts || "Kalpler & Duygular",
+      emojis: ['💋','💌','💘','💝','💖','💗','💓','💞','💕','💟','❣️','💔','❤️','🧡','💛','💚','💙','💜','🤎','🖤','🤍','💯','💢','💥','💫','💦','💨','💣','💬','👁️‍🗨️','🗨️','🗯️','💭','💤']
+    },
+    {
+      title: t.common.emojiCategories?.people || "İnsanlar & Aile",
+      emojis: ['👶','🧒','👦','👧','🧑','👱','👨','🧔','👩','🧓','👴','👵','🙍','🙎','🙅','🙆','💁','💆','💇','🧖','🧘','🛀','🛌','👭','👫','👬','💏','👩‍❤️‍💋‍👨','👨‍👩‍👦','👨‍👩‍👧','👨‍👩‍👧‍👦','👩‍👩‍👦','👨‍👨‍👦']
+    },
+    {
+      title: t.common.emojiCategories?.animals || "Hayvanlar",
+      emojis: ['🐶','🐱','🐭','🐹','🐰','🦊','🐻','🐼','🐻‍❄️','🐨','🐯','🦁','🐮','🐷','🐸','🐵','🙈','🙉','🙊','🐒','🐔','🐧','🐦','🐤','🐣','🐥','🦆','🦅','🦉','🦇','🐺','🐗','🐴','🦄','🐝','🪱','🐛','🦋','🐌','🐞','🐜','🪰','🪲','🪳','🦟','🦗','🕷️','🦂','🐢','🐍','🦎','🦖','🦕','🐙','🦑','🦐','🦞','🐠','🐟','🐡','🦈','🐳','🐋','🐬','🦭','🐊','🐅','🐆','🦓','🦍','🦧','🐘','🦛','🦏','🐪','🐫','🦒','🦘','🐕','🐩','🦮','🐈','🐈‍⬛','🐓','🦃','🦤','🦚','🦜','🦢','🦩','🕊️','🐇','🦝','🦨','🦡','🦫','🦦','🦥']
+    },
+    {
+      title: t.common.emojiCategories?.food || "Yiyecek & İçecek",
+      emojis: ['🍏','🍎','🍐','🍊','🍋','🍌','🍉','🍇','🍓','🫐','🍈','🍒','🍑','🥭','🍍','🥥','🥝','🍅','🍆','🥑','🥦','🥬','🥒','🌶️','🫑','🌽','🥕','🫒','🧄','🧅','🥔','🍠','🥐','🍞','🥖','🥨','🧀','🥚','🍳','🧈','🥞','🧇','🥓','🥩','🍗','🍖','🌭','🍔','🍟','🍕','🫓','🥪','🥙','🧆','🌮','🌯','🥗','🥘','🫕','🍝','🍜','🍲','🍛','🍣','🍱','🥟','🦪','🍤','🍙','🍚','🍘','🍥','🥠','🥮','🍢','🍡','🍧','🍨','🍦','🥧','🧁','🍰','🎂','🍮','🍭','🍬','🍫','🍿','🍩','🍪','🌰','🥜','🍯','🥛','🍼','☕','🍵','🧃','🥤','🧋','🍶','🍺','🍻','🥂','🍷','🥃','🍸','🍹','🧉']
+    },
+    {
+      title: t.common.emojiCategories?.travel || "Seyahat & Ulaşım",
+      emojis: ['🚗','🚕','🚙','🚌','🚎','🏎️','🚓','🚑','🚒','🚐','🛻','🚚','🚛','🏍️','🛵','🚲','🛴','🛹','✈️','🛩️','🚀','🛰️','🚁','⛵','🚤','🛳️','🚢','🚂','🚄','🚅','🚇','🚉','🛤️','🛣️','⛽','🚨']
+    },
+    {
+      title: t.common.emojiCategories?.sports || "Spor & Aktiviteler",
+      emojis: ['⚽','🏀','🏈','⚾','🥎','🎾','🏐','🏉','🎱','🏓','🏸','🥍','🏒','🏑','⛳','🏹','🎣','🥊','🥋','🎽','🏋️','🤼','🤸','🤺','⛹️','🤾','🏌️','🏄','🏊','🚣','🧗','🚵','🚴','🏆','🥇','🥈','🥉']
+    },
+    {
+      title: t.common.emojiCategories?.objects || "Nesneler & Semboller",
+      emojis: ['📱','💻','⌨️','🖥️','🖨️','📷','🎥','📺','📻','🎙️','🎧','🎤','📢','📣','🕯️','💡','🔦','🏠','🏡','🏢','🏣','🏥','🏦','🏨','🏪','🏫','⛪','🕌','🕍','🛕','⛩️','🗿','🏰','🎪','🎡','🎢','🎠','📚','📖','🖋️','🖊️','📝','📌','📍','🔍','🔎','🔬','🔭','🧪','🧫','🧬','💊','🩹','🩺','🔑','🔒','🔓','🛠️','🔨','⚒️','🛡️','⚔️','🔫','🏹','💣','🧨','🎇','🎆','✨','⭐','🌟','🌍','🌎','🌏']
+    },
+    {
+      title: t.common.emojiCategories?.nature || "Doğa & Hava",
+      emojis: ['🌵','🎄','🌲','🌳','🌴','🌱','🌿','☘️','🍀','🌸','🌺','🌻','🌼','🌷','🥀','🌹','🍁','🍂','🍃','🌞','🌝','🌛','🌜','🌚','🌕','🌖','🌗','🌘','🌑','🌒','🌓','🌔','🌙','🌧️','🌨️','🌩️','🌪️','🌈','☀️','⛅','☁️','❄️','☃️','🌬️','💧','🌊']
+    }
+  ];
+
+async function copyEmoji(emoji) {
+  try {
+    await invoke('copy_to_clipboard', { text: emoji });
+    copiedText = `${emoji} ${t.common.copied || 'Kopyalandı!'}`;
+    showCopied = true;
+    setTimeout(() => {
+      showCopied = false;
+    }, 1400);
+  } catch (e) {
+    console.error(e);
+  }
+}
 </script>
 
 <svelte:window on:keydown={handleKeydown} />
@@ -204,12 +315,16 @@
         </button>
       {/if}
 
+      <button class="icon-btn emoji-btn" class:active={showEmoji} on:click={toggleEmoji} title="{t.common.emojis}">😊</button>
+      <button class="icon-btn sys-btn" class:active={showSysInfo} on:click={toggleSysInfo} title="{t.common.systemInfo}">📊</button>
+
       <button class="icon-btn settings-btn" class:active={showSettings} class:spin={gearSpinning} on:click={toggleSettings} title={t.settings.title}>
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
           <circle cx="12" cy="12" r="3"/>
           <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
         </svg>
       </button>
+      
     </div>
 
     <div class="body">
@@ -222,9 +337,13 @@
             <div class="theme-label">{t.settings.colorTheme}</div>
             <div class="theme-grid">
               {#each Object.entries(THEMES) as [key, th], i}
-                <button class="theme-swatch" class:active={currentTheme === key} style="--sw: {th.accent}; animation-delay: {i * 40}ms" on:click={() => setTheme(key)} title={th.name}>
+                <button class="theme-swatch"
+                        class:active={currentTheme === key}
+                        style="--sw: {th.accent}; animation-delay: {i * 40}ms"
+                        on:click={() => setTheme(key)}
+                        title={t.themes[key]}>
                   <span class="swatch-dot" style="background: {th.accent}; box-shadow: 0 0 10px {th.accent}88;"></span>
-                  <span class="swatch-name">{th.name}</span>
+                  <span class="swatch-name">{t.themes[key]}</span>
                   {#if currentTheme === key}<span class="swatch-check">✓</span>{/if}
                 </button>
               {/each}
@@ -243,6 +362,24 @@
             </div>
 
             <div class="settings-divider"></div>
+            <div class="settings-section-title">Shortcut</div>
+            <div class="theme-grid">
+              {#each [
+                {key:'alt+space', label:'Alt + Space'},
+                {key:'ctrl+space', label:'Ctrl + Space'},
+                {key:'alt+l', label:'Alt + L'},
+                {key:'alt+p', label:'Alt + P'}
+              ] as opt}
+                <button class="theme-swatch" class:active={currentShortcut === opt.key}
+                  style="--sw: var(--accent)" on:click={() => changeShortcut(opt.key)}>
+                  <span class="swatch-dot" style="background:var(--accent);box-shadow:0 0 10px var(--accent)88"></span>
+                  <span class="swatch-name">{opt.label}</span>
+                  {#if currentShortcut === opt.key}<span class="swatch-check">✓</span>{/if}
+                </button>
+              {/each}
+            </div>
+
+            <div class="settings-divider"></div>
             <div class="settings-section-title">{t.settings.startup}</div>
             <label class="toggle-row">
               <span class="toggle-label">{t.settings.startWithSystem}</span>
@@ -253,7 +390,7 @@
 
             <div class="settings-divider"></div>
             <div class="settings-section-title">{t.settings.about}</div>
-            <div class="about-row"><span class="about-key">{t.settings.version}</span><span class="about-val">Beta v1.1</span></div>
+            <div class="about-row"><span class="about-key">{t.settings.version}</span><span class="about-val">Beta v1.2</span></div>
             <div class="about-row"><span class="about-key">{t.settings.developer}</span><span class="about-val">Wrenchiz</span></div>
             <div class="about-row"><span class="about-key">{t.settings.engine}</span><span class="about-val">Tauri v2 + Svelte</span></div>
 
@@ -263,6 +400,130 @@
               <span class="studio-link" on:click={() => invoke('open_file', { path: 'https://codex-studio-hq.netlify.app/' })} role="link" tabindex="0" on:keydown={(e) => e.key === 'Enter' && invoke('open_file', { path: 'https://codex-studio-hq.netlify.app/' })}>codeX Studio</span>
             </div>
 
+          </div>
+        </div>
+
+      {:else if showSysInfo}
+        <div class="settings-panel">
+          <div class="settings-inner">
+            <div class="settings-section-title">{t.common.systemInfo}</div>
+
+            {#if systemInfo}
+              <div class="info-card">
+                <div class="info-card-icon">🖥️</div>
+                <div class="info-card-content">
+                  <div class="info-card-title">{t.systemInfo.os}</div>
+                  <div class="info-card-sub">{systemInfo.os || 'Bilinmiyor'}</div>
+                  <div class="info-card-badge">Kernel: {systemInfo.kernel || '-'}</div>
+                </div>
+              </div>
+
+              <div class="info-card">
+                <div class="info-card-icon">🏷️</div>
+                <div class="info-card-content">
+                  <div class="info-card-title">{t.systemInfo.hostname}</div>
+                  <div class="info-card-sub">{systemInfo.hostname || 'Bilinmiyor'}</div>
+                </div>
+              </div>
+
+              <div class="info-card">
+                <div class="info-card-icon">⏱️</div>
+                <div class="info-card-content">
+                  <div class="info-card-title">{t.systemInfo.uptime}</div>
+                  <div class="info-card-sub">{systemInfo.uptime || '—'}</div>
+                </div>
+              </div>
+
+              <div class="info-card">
+                <div class="info-card-icon">📈</div>
+                <div class="info-card-content">
+                  <div class="info-card-title">{t.systemInfo.loadavg}</div>
+                  <div class="info-card-sub">{systemInfo.loadavg || '—'}</div>
+                </div>
+              </div>
+
+              <div class="info-card">
+                <div class="info-card-icon">⚡</div>
+                <div class="info-card-content">
+                  <div class="info-card-title">{t.systemInfo.cpu}</div>
+                  <div class="info-card-sub">{systemInfo.cpu?.name || 'Bilinmiyor'}</div>
+                  <div class="info-card-badge">{systemInfo.cpu?.cores || 0} {t.systemInfo.cores}</div>
+                </div>
+              </div>
+
+              <div class="info-card">
+                <div class="info-card-icon">🧠</div>
+                <div class="info-card-content">
+                  <div class="info-card-title">{t.systemInfo.ram}</div>
+                  <div class="info-card-sub">{systemInfo.ram?.available || '?'} / {systemInfo.ram?.total || '?'}</div>
+                  <div class="progress-bar">
+                    <div class="progress-fill" style="width: {systemInfo.ram?.percent || 0}%; background: {(systemInfo.ram?.percent || 0) > 80 ? '#e5383b' : 'var(--accent)'}"></div>
+                  </div>
+                  <span class="progress-text">{systemInfo.ram?.percent || 0}% {t.systemInfo.percent_used}</span>
+                </div>
+              </div>
+
+              <div class="info-card">
+                <div class="info-card-icon">🔄</div>
+                <div class="info-card-content">
+                  <div class="info-card-title">{t.systemInfo.swap}</div>
+                  <div class="info-card-sub">{systemInfo.swap?.free || '?'} / {systemInfo.swap?.total || '?'}</div>
+                  <div class="progress-bar">
+                    <div class="progress-fill" style="width: {systemInfo.swap?.percent || 0}%; background: {(systemInfo.swap?.percent || 0) > 70 ? '#e5383b' : 'var(--accent)'}"></div>
+                  </div>
+                  <span class="progress-text">{systemInfo.swap?.percent || 0}% {t.systemInfo.percent_used}</span>
+                </div>
+              </div>
+
+              <div class="info-card">
+                <div class="info-card-icon">💾</div>
+                <div class="info-card-content">
+                  <div class="info-card-title">{t.systemInfo.disk}</div>
+                  <div class="info-card-sub">{systemInfo.disk?.free || '?'} / {systemInfo.disk?.total || '?'}</div>
+                  <div class="progress-bar">
+                    <div class="progress-fill" style="width: {systemInfo.disk?.percent || 0}%; background: {(systemInfo.disk?.percent || 0) > 85 ? '#e5383b' : 'var(--accent)'}"></div>
+                  </div>
+                  <span class="progress-text">{systemInfo.disk?.percent || 0}% {t.systemInfo.percent_full}</span>
+                </div>
+              </div>
+
+              <div class="info-card">
+                <div class="info-card-icon">🌡️</div>
+                <div class="info-card-content">
+                  <div class="info-card-title">{t.systemInfo.temperature}</div>
+                  <div class="info-card-sub">{systemInfo.temperature || '—'}</div>
+                </div>
+              </div>
+
+            {:else}
+              <div class="sys-loading">{t.systemInfo.loading}</div>
+            {/if}
+          </div>
+        </div>
+
+      {:else if showEmoji}
+        <div class="settings-panel">
+          <div class="settings-inner">
+            <div class="settings-section-title">{t.common.emojis}</div>
+
+            <div class="emoji-container">
+              {#each EMOJI_CATEGORIES as category}
+                <div class="emoji-category">
+                  <div class="category-title">{category.title}</div>
+                  <div class="emoji-grid">
+                    {#each category.emojis as emoji}
+                      <button class="emoji-item" on:click={() => copyEmoji(emoji)} title={emoji}>
+                        {emoji}
+                      </button>
+                    {/each}
+                  </div>
+                </div>
+              {/each}
+            </div>
+
+            {#if showCopied}
+              <div class="copied-toast">{copiedText}</div>
+            {/if}
           </div>
         </div>
 
@@ -276,8 +537,19 @@
                 <div class="result-item" class:selected={fi === selectedIndex} role="button" tabindex="0" style="animation-delay: {rowI * 25}ms" on:click={() => selectResult(item)} on:mouseenter={() => selectedIndex = fi}>
                   <span class="item-icon">{item.icon}</span>
                   <div class="item-info">
-                    <span class="item-name">{item.name}</span>
-                    {#if item.desc}<span class="item-sub">{item.desc}</span>{/if}
+                    {#if item.result_type === 'web_search'}
+                      <span class="item-name">{t.actions.web_search}: "{query}"</span>
+                      <span class="item-sub">{t.actions.open_in_browser}</span>
+                    {:else if item.result_type === 'youtube_search'}
+                      <span class="item-name">{t.actions.youtube_search}: "{query}"</span>
+                      <span class="item-sub">{t.actions.open_in_browser}</span>
+                    {:else if item.result_type === 'command'}
+                      <span class="item-name">{t.actions.execute}: "{item.name.replace('Run: ', '')}"</span>
+                      <span class="item-sub">{t.actions.execute}</span>
+                    {:else}
+                      <span class="item-name">{item.name}</span>
+                      <span class="item-sub">{item.desc}</span>
+                    {/if}
                   </div>
                   {#if fi === selectedIndex}<span class="item-badge">{al(item)}</span>{/if}
                 </div>
@@ -293,9 +565,35 @@
               </div>
               <div class="detail-body">
                 <div class="meta-heading">{t.common.metadata}</div>
-                <div class="meta-row" style="animation-delay:0ms"><span class="meta-k">{t.metadata.name}</span><span class="meta-v">{selectedItem.name}</span></div>
+                <div class="meta-row" style="animation-delay:0ms">
+                  <span class="meta-k">{t.metadata.name}</span>
+                  <span class="meta-v">
+                    {#if selectedItem.result_type === 'web_search'}
+                      {t.actions.web_search}: "{query}"
+                    {:else if selectedItem.result_type === 'youtube_search'}
+                      {t.actions.youtube_search}: "{query}"
+                    {:else if selectedItem.result_type === 'command'}
+                      {t.actions.execute}: "{selectedItem.name.replace('Run: ', '')}"
+                    {:else}
+                      {selectedItem.name}
+                    {/if}
+                  </span>
+                </div>
                 {#if selectedItem.desc}
-                  <div class="meta-row" style="animation-delay:40ms"><span class="meta-k">{t.metadata.where}</span><span class="meta-v mono">{selectedItem.desc}</span></div>
+                  <div class="meta-row" style="animation-delay:40ms">
+                    <span class="meta-k">{t.metadata.where}</span>
+                    <span class="meta-v mono">
+                      {#if selectedItem.result_type === 'web_search'}
+                        {t.actions.open_in_browser}
+                      {:else if selectedItem.result_type === 'youtube_search'}
+                        {t.actions.open_in_browser}
+                      {:else if selectedItem.result_type === 'command'}
+                        {t.actions.execute}
+                      {:else}
+                        {selectedItem.desc}
+                      {/if}
+                    </span>
+                  </div>
                 {/if}
                 <div class="meta-row" style="animation-delay:80ms"><span class="meta-k">{t.metadata.type}</span><span class="meta-v">{tl(selectedItem.result_type)}</span></div>
                 {#if selectedItem.path && selectedItem.path !== selectedItem.desc}
@@ -306,7 +604,7 @@
           {/if}
         </div>
 
-            {:else}
+      {:else}
         <div class="split">
           <div class="results-list">
             {#if recentFiles.length > 0}
@@ -322,15 +620,13 @@
               {/each}
             {/if}
 
-          
-
             <div class="section-label">{t.common.suggestions}</div>
             {#each [
               {icon:'🔒', name:'lock', sub: t.suggestions.lock},
               {icon:'⏻', name:'shutdown', sub: t.suggestions.shutdown},
               {icon:'🔄', name:'reboot', sub: t.suggestions.reboot},
+              {icon:'🖥️', name:'> whoami', sub: t.suggestions.terminal},
               {icon:'🧮', name:'2 + 2', sub: t.suggestions.calculator},
-              {icon:'🌐', name:'anything', sub: t.suggestions.web},
             ] as tip}
               <div class="result-item tip">
                 <span class="item-icon">{tip.icon}</span>
@@ -343,17 +639,21 @@
           </div>
 
           <div class="detail-panel welcome">
-            <div class="welcome-orb"></div>
-            <div class="welcome-orb2"></div>
-            <div class="w-icon" style="animation: float 3s ease-in-out infinite">⚡</div>
-            <div class="w-title">{t.welcome.title}</div>
-            <div class="w-sub">{t.welcome.subtitle}</div>
-            <div class="w-chips">
-              {#each t.welcome.chips as c, ci}
-                <span style="animation: pop-chip 0.3s cubic-bezier(0.34,1.5,0.64,1) {200 + ci*60}ms both">{c}</span>
-              {/each}
-            </div>
-          </div>
+  <div class="welcome-orb"></div>
+  <div class="welcome-orb2"></div>
+  <div class="w-title-big">Universal</div>
+  <div class="w-stats">
+    <div class="w-stat">
+      <span class="w-stat-num">{totalApps}</span>
+      <span class="w-stat-label">{t.common.apps}</span>
+    </div>
+    <div class="w-stat-divider"></div>
+    <div class="w-stat">
+      <span class="w-stat-num">{totalFiles}</span>
+      <span class="w-stat-label">{t.common.files}</span>
+    </div>
+  </div>
+</div>
         </div>
       {/if}
 
@@ -364,11 +664,17 @@
       <span class="fhint"><kbd>↵</kbd> {selectedItem ? al(selectedItem) : t.footer.open}</span>
       <span class="fhint"><kbd>Esc</kbd> {t.footer.close}</span>
       <span class="fsep"></span>
-      {#if selectedItem && !showSettings}
+      {#if selectedItem && !showSettings && !showSysInfo}
         <span class="ftype" style="animation: fade-in 0.2s ease">{tl(selectedItem.result_type)}</span>
       {/if}
       {#if showSettings}
         <span class="ftype" style="animation: fade-in 0.2s ease; color: rgba(var(--accent-rgb),0.5)">{t.settings.title}</span>
+      {/if}
+      {#if showSysInfo}
+        <span class="ftype" style="animation: fade-in 0.2s ease; color: rgba(var(--accent-rgb),0.5)">{t.common.systemInfo}</span>
+      {/if}
+      {#if showEmoji}
+        <span class="ftype" style="animation: fade-in 0.2s ease; color: rgba(var(--accent-rgb),0.5)">{t.common.emojis}</span>
       {/if}
     </div>
 
@@ -388,10 +694,23 @@
     scroll-behavior: smooth;
   }
 
-  .root { width: 100vw; height: 100vh; will-change: transform;display: flex; align-items: center; justify-content: center; background: transparent; }
+  .root {
+  width: 100vw;
+  height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+}
 
   .launcher {
-    width: 740px; height: 480px; display: flex; flex-direction: column; border-radius: 14px; overflow: hidden;
+    width: 100%;
+  height: 100%;
+  aspect-ratio: 740 / 480;
+  display: flex;
+  flex-direction: column;
+  border-radius: 14px;
+  overflow: hidden;
     font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Segoe UI', sans-serif;
     background: radial-gradient(ellipse 80% 55% at 65% 0%, rgba(var(--accent-rgb), 0.16) 0%, transparent 60%),
                 radial-gradient(ellipse 45% 35% at 5% 100%, rgba(var(--accent-rgb), 0.10) 0%, transparent 55%),
@@ -403,14 +722,46 @@
   }
   .launcher.visible { opacity: 1; transform: scale(1) translateY(0); }
 
-  .search-bar { display: flex; align-items: center; gap: 8px; padding: 12px 14px; border-bottom: 1px solid rgba(var(--accent-rgb), 0.1); background: rgba(255,255,255,0.022); flex-shrink: 0; }
+  .emoji-btn { font-size: 14px; margin-right: 0px; }
+  .emoji-btn.active { background: rgba(var(--accent-rgb), 0.22); border-color: rgba(var(--accent-rgb), 0.45); }
 
-  .icon-btn { width: 26px; height: 26px; border: 1px solid rgba(255,255,255,0.08); border-radius: 7px; background: rgba(255,255,255,0.05); color: rgba(255,255,255,0.38); cursor: pointer; display: flex; align-items: center; justify-content: center; flex-shrink: 0; transition: background 0.15s, color 0.15s, border-color 0.15s, transform 0.1s; }
+  .emoji-item {
+    width: 54px; height: 54px; font-size: 34px;
+    border: 1px solid rgba(255,255,255,0.1); border-radius: 14px;
+    background: rgba(255,255,255,0.05); cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    transition: all 0.2s cubic-bezier(0.34,1.56,0.64,1);
+    box-shadow: 0 2px 8px rgba(0,0,0,0.25);
+  }
+  .emoji-item:hover { background: rgba(var(--accent-rgb), 0.22); transform: scale(1.18); border-color: rgba(var(--accent-rgb), 0.5); }
+
+  @keyframes fade-out { to { opacity: 0; transform: translateY(-10px); } }
+
+  .search-bar { display: flex; align-items: center; gap: 6px; padding: 12px 14px; border-bottom: 1px solid rgba(var(--accent-rgb), 0.1); background: rgba(255,255,255,0.022); flex-shrink: 0; }
+
+  .icon-btn { 
+  width: 28px; 
+  height: 28px; 
+  min-width: 28px;
+  min-height: 28px;
+  border: 1px solid rgba(255,255,255,0.08); 
+  border-radius: 7px; 
+  background: rgba(255,255,255,0.05); 
+  color: rgba(255,255,255,0.38); 
+  cursor: pointer; 
+  display: flex; 
+  align-items: center; 
+  justify-content: center; 
+  flex-shrink: 0; 
+  transition: background 0.15s, color 0.15s, border-color 0.15s, transform 0.1s; 
+}
   .icon-btn:hover { background: rgba(var(--accent-rgb), 0.15); border-color: rgba(var(--accent-rgb), 0.35); color: rgba(255,255,255,0.9); transform: scale(1.08); }
   .icon-btn:active { transform: scale(0.95); }
-  .settings-btn { margin-left: auto; }
+  .settings-btn { margin-left: 0px; }
   .settings-btn.active { background: rgba(var(--accent-rgb), 0.22); border-color: rgba(var(--accent-rgb), 0.45); color: var(--accent); }
   .settings-btn.spin svg { animation: gear-spin 0.45s cubic-bezier(0.34,1.2,0.64,1); }
+  .sys-btn { font-size: 14px; margin-right: 0px; }
+  .sys-btn.active { background: rgba(var(--accent-rgb), 0.22); border-color: rgba(var(--accent-rgb), 0.45); color: var(--accent); }
 
   @keyframes gear-spin { from { transform: rotate(0deg); } to { transform: rotate(180deg); } }
 
@@ -425,21 +776,21 @@
   .body { display: flex; flex: 1; min-height: 0; overflow: hidden; }
   .split { display: flex; flex: 1; min-height: 0; overflow: hidden; }
 
- .results-list {
-  width: 252px; flex-shrink: 0;
-  overflow-y: auto; padding: 6px 0;
-  border-right: 1px solid rgba(var(--accent-rgb), 0.1);
-  scrollbar-width: thin;
-  scrollbar-color: rgba(var(--accent-rgb), 0.15) transparent;
-  scroll-behavior: smooth;
-  -webkit-overflow-scrolling: touch;
-}
+  .results-list {
+    width: 252px; flex-shrink: 0;
+    overflow-y: auto; padding: 6px 0;
+    border-right: 1px solid rgba(var(--accent-rgb), 0.1);
+    scrollbar-width: thin;
+    scrollbar-color: rgba(var(--accent-rgb), 0.15) transparent;
+    scroll-behavior: smooth;
+    -webkit-overflow-scrolling: touch;
+  }
   .results-list::-webkit-scrollbar { width: 3px; }
   .results-list::-webkit-scrollbar-thumb { background: rgba(var(--accent-rgb), 0.2); border-radius: 3px; }
 
   .section-label { font-size: 10.5px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: rgba(var(--accent-rgb), 0.38); padding: 10px 14px 4px; user-select: none; }
 
-  .result-item { display: flex; align-items: center; animation: slide-in 0.12s ease both;gap: 9px; padding: 7px 12px 7px 14px; cursor: pointer; user-select: none; border-left: 2px solid transparent; transition: background 0.1s, border-color 0.1s, transform 0.08s; animation: slide-in 0.2s cubic-bezier(0.34,1.2,0.64,1) both; }
+  .result-item { display: flex; align-items: center; gap: 9px; padding: 7px 12px 7px 14px; cursor: pointer; user-select: none; border-left: 2px solid transparent; transition: background 0.1s, border-color 0.1s, transform 0.08s; animation: slide-in 0.2s cubic-bezier(0.34,1.2,0.64,1) both; }
   .result-item:hover { background: rgba(var(--accent-rgb), 0.07); transform: translateX(2px); }
   .result-item.selected { background: rgba(var(--accent-rgb), 0.13); border-left-color: var(--accent); transform: translateX(0); }
   .recent-row { opacity: 0.8; }
@@ -449,6 +800,11 @@
 
   @keyframes slide-in { from { opacity: 0; transform: translateX(-8px); } to { opacity: 1; transform: translateX(0); } }
   @keyframes fade-in { from { opacity: 0; } to { opacity: 1; } }
+
+  .emoji-container { display: flex; flex-direction: column; gap: 24px; padding: 8px 12px; position: relative; overflow: visible; }
+  .emoji-category { display: flex; flex-direction: column; gap: 8px; }
+  .category-title { font-size: 13px; font-weight: 700; color: rgba(var(--accent-rgb), 0.8); padding: 4px 8px 6px; letter-spacing: 0.6px; text-transform: uppercase; border-bottom: 1px solid rgba(var(--accent-rgb), 0.15); }
+  .emoji-grid { display: flex; flex-wrap: wrap; gap: 10px; justify-content: flex-start; padding: 4px 8px; }
 
   .item-icon { font-size: 15px; width: 20px; text-align: center; flex-shrink: 0; line-height: 1; }
   .item-info { display: flex; flex-direction: column; min-width: 0; flex: 1; }
@@ -472,12 +828,48 @@
   .meta-v { font-size: 12px; color: rgba(200,220,255,0.72); text-align: right; word-break: break-all; }
   .meta-v.mono { font-family: 'SF Mono','Fira Code',monospace; font-size: 11px; color: rgba(var(--accent-rgb), 0.45); }
 
+  .search-logo {
+  width: 24px;
+  height: 24px;
+  flex-shrink: 0;
+  filter: drop-shadow(0 0 8px rgba(var(--accent-rgb), 0.3));
+  margin-left: 4px;
+  transition: transform 0.2s;
+}
+.search-logo:hover {
+  transform: scale(1.1);
+}
+
   .welcome { align-items: center; justify-content: center; gap: 0; position: relative; overflow: hidden; }
-  .welcome-orb { position: absolute; top: 20%; left: 50%; transform: translate(-50%,-50%); width: 240px; height: 240px; background: radial-gradient(circle, rgba(var(--accent-rgb),0.12) 0%, transparent 65%); animation: orb-pulse 4s ease-in-out infinite; pointer-events: none; }
-  .welcome-orb2 { position: absolute; bottom: 10%; right: 10%; width: 120px; height: 120px; background: radial-gradient(circle, rgba(var(--accent-rgb),0.07) 0%, transparent 65%); animation: orb-pulse 4s ease-in-out 1.5s infinite; pointer-events: none; }
-  @keyframes orb-pulse { 0%,100% { opacity: 0.5; transform: translate(-50%,-50%) scale(1); } 50% { opacity: 1; transform: translate(-50%,-50%) scale(1.2); } }
+  .welcome-orb {
+  position: absolute;
+  top: 20%;
+  left: 50%;
+  transform: translate(-50%,-50%);
+  width: 240px;
+  height: 240px;
+  background: radial-gradient(circle, rgba(var(--accent-rgb),0.08) 0%, transparent 70%);
+  pointer-events: none;
+  will-change: transform, opacity;
+  opacity: 0.5;
+  transition: opacity 0.8s ease;
+}
+
+.welcome-orb2 {
+  position: absolute;
+  bottom: 10%;
+  right: 10%;
+  width: 120px;
+  height: 120px;
+  background: radial-gradient(circle, rgba(var(--accent-rgb),0.05) 0%, transparent 70%);
+  pointer-events: none;
+  will-change: transform, opacity;
+  opacity: 0.3;
+  transition: opacity 1s ease;
+}
   @keyframes float { 0%,100% { transform: translateY(0px); } 50% { transform: translateY(-6px); } }
   @keyframes pop-chip { from { opacity: 0; transform: scale(0.7) translateY(6px); } to { opacity: 1; transform: scale(1) translateY(0); } }
+
 
   .w-icon { font-size: 42px; margin-bottom: 12px; filter: drop-shadow(0 0 20px rgba(var(--accent-rgb),0.5)); position: relative; z-index: 1; }
   .w-title { font-size: 16px; font-weight: 600; color: rgba(220,235,255,0.9); letter-spacing: -0.015em; margin-bottom: 4px; position: relative; z-index:1; }
@@ -501,6 +893,62 @@
   .swatch-name { flex: 1; text-align: left; }
   .swatch-check { font-size: 12px; color: var(--accent); animation: pop-chip 0.2s cubic-bezier(0.34,1.5,0.64,1); }
   .settings-divider { height: 1px; background: rgba(var(--accent-rgb), 0.08); margin: 8px 0; }
+
+  .w-title-big {
+  font-size: 56px;
+  font-weight: 700;
+  letter-spacing: -1px;
+  margin-bottom: 16px;
+  position: relative;
+  z-index: 1;
+  background: linear-gradient(135deg, #fff 0%, rgba(180,200,255,0.7) 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+  .w-stats { display: flex; align-items: center; gap: 24px; position: relative; z-index: 1; }
+  .w-stat { display: flex; flex-direction: column; align-items: center; }
+  .w-stat-num {
+  font-size: 38px;
+  font-weight: 700;
+  color: #fff;
+}
+  .w-stat-label {
+  font-size: 16px;
+  font-weight: 700;
+  color: rgba(200,220,255,0.7);
+  text-transform: uppercase;
+  letter-spacing: 2px;
+  margin-top: 4px;
+}
+  .w-stat-divider { width: 1px; height: 36px; background: rgba(255,255,255,0.08); }
+
+  .copied-toast {
+    position: fixed; bottom: 80px; left: 50%; transform: translateX(-50%);
+    background: linear-gradient(145deg, rgba(16, 185, 129, 0.85), rgba(5, 150, 105, 0.9));
+    color: white; font-size: 14px; font-weight: 600; padding: 11px 20px; border-radius: 12px;
+    box-shadow: 0 8px 25px rgba(0,0,0,0.45), 0 0 0 1px rgba(255,255,255,0.15) inset, 0 0 15px rgba(16, 185, 129, 0.4);
+    z-index: 300; white-space: nowrap; pointer-events: none; backdrop-filter: blur(12px);
+    border: 1px solid rgba(255,255,255,0.18); animation: toastPop 1.65s ease forwards; opacity: 0;
+  }
+  @keyframes toastPop {
+    0%   { opacity: 0; transform: translate(-50%, 35px) scale(0.85); }
+    18%  { opacity: 1; transform: translate(-50%, 0) scale(1); }
+    75%  { opacity: 1; transform: translate(-50%, -18px) scale(1); }
+    100% { opacity: 0; transform: translate(-50%, -55px) scale(0.92); }
+  }
+
+  .w-logo { width: 64px; height: 64px; margin-bottom: 12px; position: relative; z-index: 1; filter: drop-shadow(0 0 20px rgba(var(--accent-rgb),0.5)); }
+
+  .info-card { display: flex; align-items: center; gap: 14px; padding: 14px; background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.06); border-radius: 12px; animation: slide-in 0.2s ease both; }
+  .info-card-icon { font-size: 28px; width: 48px; height: 48px; display: flex; align-items: center; justify-content: center; background: rgba(var(--accent-rgb), 0.1); border-radius: 12px; flex-shrink: 0; }
+  .info-card-content { flex: 1; min-width: 0; }
+  .info-card-title { font-size: 13px; font-weight: 600; color: rgba(220,235,255,0.9); margin-bottom: 2px; }
+  .info-card-sub { font-size: 11px; color: rgba(200,220,255,0.5); margin-bottom: 6px; }
+  .info-card-badge { display: inline-block; font-size: 10px; color: rgba(var(--accent-rgb), 0.7); background: rgba(var(--accent-rgb), 0.1); padding: 2px 8px; border-radius: 10px; }
+  .progress-bar { width: 100%; height: 4px; background: rgba(255,255,255,0.06); border-radius: 2px; overflow: hidden; margin-bottom: 4px; }
+  .progress-fill { height: 100%; border-radius: 2px; transition: width 0.5s ease; }
+  .progress-text { font-size: 10px; color: rgba(200,220,255,0.4); }
+  .sys-loading { text-align: center; color: rgba(200,220,255,0.3); padding: 20px; }
 
   .toggle-row { display: flex; align-items: center; justify-content: space-between; padding: 8px 0; }
   .toggle-label { font-size: 13px; color: rgba(220,235,255,0.7); }

@@ -120,7 +120,7 @@ fn index_files(files: &mut HashMap<String, PathBuf>) {
 
     for dir in &dirs {
         if std::fs::read_dir(dir).is_ok() {
-            for entry in WalkDir::new(dir).max_depth(4).into_iter().flatten() {
+            for entry in WalkDir::new(dir).max_depth(10).into_iter().flatten() {
                 if entry.file_type().is_file() && !entry.file_name().to_string_lossy().starts_with('.') {
                     if let Some(name) = entry.file_name().to_str() {
                         files.insert(name.to_lowercase(), entry.path().to_path_buf());
@@ -172,6 +172,20 @@ fn search(state: tauri::State<AppState>, query: String) -> Vec<SearchResult> {
         });
     }
 
+        // Komut paleti (> ile başlayanlar)
+    if query.starts_with('>') {
+        let cmd = query[1..].trim().to_string();
+        if !cmd.is_empty() {
+            results.push(SearchResult {
+                name: format!("Run: {}", cmd),
+                desc: "Execute command".to_string(),
+                icon: "🖥️".to_string(),
+                result_type: "command".to_string(),
+                path: cmd,
+            });
+        }
+    }
+
     if !query.is_empty() {
         results.push(SearchResult {
             name: format!("Search web for \"{}\"", query),
@@ -180,6 +194,17 @@ fn search(state: tauri::State<AppState>, query: String) -> Vec<SearchResult> {
             result_type: "web_search".to_string(),
             path: query.clone(),
         });
+    }
+
+        if !query.is_empty() {
+        results.push(SearchResult {
+            name: format!("Search YouTube for \"{}\"", query),
+            desc: "Open in YouTube".to_string(),
+            icon: "▶️".to_string(),
+            result_type: "youtube_search".to_string(),
+            path: query.clone(),
+        });
+
     }
 
         let sys_cmds = vec![
@@ -348,8 +373,22 @@ fn open_app(state: tauri::State<AppState>, path: String) -> Result<(), String> {
 }
 
 #[tauri::command]
+fn copy_to_clipboard(text: String) -> Result<(), String> {
+    use arboard::Clipboard;
+    let mut clipboard = Clipboard::new().map_err(|e| e.to_string())?;
+    clipboard.set_text(&text).map_err(|e| e.to_string())?;
+    Ok(())
+}
+
+#[tauri::command]
 fn web_search(query: String) -> Result<(), String> {
     let url = format!("https://www.google.com/search?q={}", query.replace(' ', "+"));
+    open::that(&url).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+fn youtube_search(query: String) -> Result<(), String> {
+    let url = format!("https://www.youtube.com/results?search_query={}", query.replace(' ', "+"));
     open::that(&url).map_err(|e| e.to_string())
 }
 
@@ -657,7 +696,7 @@ fn get_autostart() -> Result<bool, String> {
         .set_app_path(&std::env::current_exe().map_err(|e| e.to_string())?.to_string_lossy())
         .build()
         .map_err(|e| e.to_string())?;
-    Ok(auto.is_enabled().unwrap_or(false))
+    Ok(auto.is_enabled().unwrap_or(true))
 }
 
 #[tauri::command]
@@ -677,9 +716,184 @@ fn set_autostart(enable: bool) -> Result<(), String> {
 }
 
 #[tauri::command]
+fn get_shortcut() -> Result<String, String> {
+    let config_path = dirs::config_dir()
+        .unwrap_or_else(|| PathBuf::from("."))
+        .join("universal-launcher")
+        .join("shortcut.txt");
+    
+    if let Ok(content) = std::fs::read_to_string(&config_path) {
+        Ok(content.trim().to_string())
+    } else {
+        Ok("ctrl+space".to_string())
+    }
+}
+
+#[tauri::command]
 fn set_shortcut(shortcut: String) -> Result<(), String> {
-    println!("Shortcut changed to: {}", shortcut);
+    let config_path = dirs::config_dir()
+        .unwrap_or_else(|| PathBuf::from("."))
+        .join("universal-launcher")
+        .join("shortcut.txt");
+    
+    if let Some(parent) = config_path.parent() {
+        std::fs::create_dir_all(parent).map_err(|e| e.to_string())?;
+    }
+    std::fs::write(&config_path, &shortcut).map_err(|e| e.to_string())?;
     Ok(())
+}
+
+
+#[tauri::command]
+fn get_system_info() -> Result<serde_json::Value, String> {
+    let mut info = serde_json::json!({
+        "os": "Unknown",
+        "kernel": "Unknown",
+        "hostname": "Unknown",
+        "uptime": "0h 0m",
+        "loadavg": "0.00 0.00 0.00",
+        "cpu": {"name": "Unknown", "cores": 0, "usage": "?%"},
+        "ram": {"total": "?", "available": "?", "percent": 0},
+        "swap": {"total": "?", "free": "?", "percent": 0},
+        "disk": {"total": "?", "free": "?", "percent": 0},
+        "network": "Bağlı",
+        "temperature": "—"
+    });
+
+    // OS & Kernel
+    if let Ok(os) = std::fs::read_to_string("/etc/os-release") {
+        for line in os.lines() {
+            if line.starts_with("PRETTY_NAME=") {
+                info["os"] = serde_json::json!(line.split('=').nth(1).unwrap_or("Unknown").trim_matches('"'));
+            }
+        }
+    }
+    if let Ok(kernel) = std::fs::read_to_string("/proc/version") {
+        let k = kernel.split_whitespace().nth(2).unwrap_or("Unknown");
+        info["kernel"] = serde_json::json!(k);
+    }
+
+    // Hostname
+    if let Ok(host) = std::fs::read_to_string("/etc/hostname") {
+        info["hostname"] = serde_json::json!(host.trim());
+    }
+
+    // Uptime + Load Average
+    if let Ok(up) = std::fs::read_to_string("/proc/uptime") {
+        if let Some(seconds_str) = up.split('.').next() {
+            if let Ok(seconds) = seconds_str.parse::<u64>() {
+                let hours = seconds / 3600;
+                let mins = (seconds % 3600) / 60;
+                info["uptime"] = serde_json::json!(format!("{}s {}d", hours, mins));
+            }
+        }
+    }
+    if let Ok(load) = std::fs::read_to_string("/proc/loadavg") {
+        let parts: Vec<&str> = load.split_whitespace().collect();
+        if !parts.is_empty() {
+            info["loadavg"] = serde_json::json!(parts[0..3].join(" "));
+        }
+    }
+
+    // CPU
+    if let Ok(cpuinfo) = std::fs::read_to_string("/proc/cpuinfo") {
+        let cores = cpuinfo.lines().filter(|l| l.starts_with("processor")).count();
+        let model = cpuinfo.lines()
+            .find(|l| l.starts_with("model name"))
+            .and_then(|l| l.split(':').nth(1))
+            .unwrap_or("Unknown")
+            .trim();
+        info["cpu"]["name"] = serde_json::json!(model);
+        info["cpu"]["cores"] = serde_json::json!(cores);
+    }
+
+    // RAM
+    if let Ok(meminfo) = std::fs::read_to_string("/proc/meminfo") {
+        let get_kb = |key: &str| -> f64 {
+            meminfo.lines()
+                .find(|l| l.starts_with(key))
+                .and_then(|l| l.split_whitespace().nth(1))
+                .and_then(|v| v.parse().ok())
+                .unwrap_or(0.0)
+        };
+        let total = get_kb("MemTotal");
+        let avail = get_kb("MemAvailable");
+        let percent = if total > 0.0 { ((total - avail) / total * 100.0) as u32 } else { 0 };
+
+        info["ram"] = serde_json::json!({
+            "total": format!("{:.1} GB", total / 1024.0 / 1024.0),
+            "available": format!("{:.1} GB", avail / 1024.0 / 1024.0),
+            "percent": percent
+        });
+    }
+
+    // Swap
+    if let Ok(meminfo) = std::fs::read_to_string("/proc/meminfo") {
+        let get_kb = |key: &str| -> f64 {
+            meminfo.lines()
+                .find(|l| l.starts_with(key))
+                .and_then(|l| l.split_whitespace().nth(1))
+                .and_then(|v| v.parse().ok())
+                .unwrap_or(0.0)
+        };
+        let sw_total = get_kb("SwapTotal");
+        let sw_free = get_kb("SwapFree");
+        let sw_percent = if sw_total > 0.0 { ((sw_total - sw_free) / sw_total * 100.0) as u32 } else { 0 };
+
+        info["swap"] = serde_json::json!({
+            "total": format!("{:.1} GB", sw_total / 1024.0 / 1024.0),
+            "free": format!("{:.1} GB", sw_free / 1024.0 / 1024.0),
+            "percent": sw_percent
+        });
+    }
+
+    // Disk
+    if let Ok(output) = std::process::Command::new("df").arg("-h").arg("/").output() {
+        let df = String::from_utf8_lossy(&output.stdout);
+        if let Some(line) = df.lines().nth(1) {
+            let parts: Vec<&str> = line.split_whitespace().collect();
+            if parts.len() >= 5 {
+                let percent = parts[4].trim_end_matches('%').parse::<u32>().unwrap_or(0);
+                info["disk"] = serde_json::json!({
+                    "total": parts[1],
+                    "free": parts[3],
+                    "percent": percent
+                });
+            }
+        }
+    }
+
+    // Sıcaklık (sensors komutu varsa)
+    if let Ok(output) = std::process::Command::new("sensors").output() {
+        let temp_str = String::from_utf8_lossy(&output.stdout);
+        if let Some(line) = temp_str.lines().find(|l| l.contains("Core 0") || l.contains("CPU")) {
+            if let Some(temp) = line.split(':').nth(1).and_then(|s| s.split('°').next()) {
+                info["temperature"] = serde_json::json!(temp.trim());
+            }
+        }
+    }
+
+    Ok(info)
+}
+
+#[tauri::command]
+fn get_index_stats(state: tauri::State<AppState>) -> Result<serde_json::Value, String> {
+    let app_count = state.app_index.lock().unwrap().len();
+    let file_count = state.file_index.lock().unwrap().len();
+    Ok(serde_json::json!({
+        "apps": app_count,
+        "files": file_count
+    }))
+}
+
+#[tauri::command]
+fn execute_command(cmd: String) -> Result<String, String> {
+    let output = std::process::Command::new("sh")
+        .arg("-c")
+        .arg(&cmd)
+        .output()
+        .map_err(|e| e.to_string())?;
+    Ok(String::from_utf8_lossy(&output.stdout).to_string())
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -696,7 +910,7 @@ pub fn run() {
     file_index: Mutex::new(files),
     recent_items: Mutex::new(Vec::new()),
 })
-       .invoke_handler(tauri::generate_handler![search, open_file, open_app, web_search, system_command, get_recent_files, get_autostart, set_autostart, set_shortcut])
+       .invoke_handler(tauri::generate_handler![search, open_file, open_app, web_search, system_command, get_recent_files, get_autostart, set_autostart, set_shortcut, youtube_search, copy_to_clipboard, get_system_info, get_shortcut, get_index_stats, execute_command])
         .setup(|app| {
             use tauri::tray::{TrayIconBuilder, MouseButton, MouseButtonState, TrayIconEvent};
             use tauri::menu::{MenuBuilder, MenuItemBuilder};
@@ -752,16 +966,51 @@ pub fn run() {
                 .build(app)
                 .unwrap();
 
-            // Alt+Space kısayolu
+            // Kısayol dinleyici
             let app_handle = app.handle().clone();
             thread::spawn(move || {
+                let config_path = dirs::config_dir()
+                    .unwrap_or_else(|| PathBuf::from("."))
+                    .join("universal-launcher")
+                    .join("shortcut.txt");
+                
+                let shortcut_str = std::fs::read_to_string(&config_path)
+                    .unwrap_or_else(|_| "ctrl+space".to_string())
+                    .trim()
+                    .to_string();
+                
+                let parts: Vec<&str> = shortcut_str.split('+').collect();
+                let use_ctrl = parts[0] == "ctrl";
+                let key_char = parts.get(1).map(|s| s.to_lowercase()).unwrap_or_else(|| "space".to_string());
+                
+                let target_key = match key_char.as_str() {
+                    "space" => Key::Space,
+                    "l" => Key::KeyL,
+                    "p" => Key::KeyP,
+                    _ => Key::Space,
+                };
+                
+                let ctrl_down = AtomicBool::new(false);
                 let alt_down = AtomicBool::new(false);
+                
                 listen(move |event: Event| {
                     match event.event_type {
                         EventType::KeyPress(Key::Alt) => { alt_down.store(true, Ordering::SeqCst); }
                         EventType::KeyRelease(Key::Alt) => { alt_down.store(false, Ordering::SeqCst); }
-                        EventType::KeyPress(Key::Space) => {
-                            if alt_down.load(Ordering::SeqCst) {
+                        EventType::KeyPress(Key::ControlLeft) | EventType::KeyPress(Key::ControlRight) => { 
+                            ctrl_down.store(true, Ordering::SeqCst); 
+                        }
+                        EventType::KeyRelease(Key::ControlLeft) | EventType::KeyRelease(Key::ControlRight) => { 
+                            ctrl_down.store(false, Ordering::SeqCst); 
+                        }
+                        EventType::KeyPress(key) if key == target_key => {
+                            let modifier_active = if use_ctrl { 
+                                ctrl_down.load(Ordering::SeqCst) 
+                            } else { 
+                                alt_down.load(Ordering::SeqCst) 
+                            };
+                            
+                            if modifier_active {
                                 if let Some(window) = app_handle.get_webview_window("main") {
                                     if window.is_visible().unwrap_or(false) {
                                         let _ = window.hide();
