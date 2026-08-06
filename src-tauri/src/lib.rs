@@ -57,22 +57,66 @@ fn parse_desktop_file(path: &PathBuf) -> Option<AppInfo> {
 }
 
 fn index_apps(apps: &mut HashMap<String, AppInfo>) {
-    let mut dirs = vec![
-        "/usr/share/applications".to_string(),
-        "/usr/local/share/applications".to_string(),
-    ];
-    if let Ok(home) = std::env::var("HOME") {
-        dirs.push(format!("{}/.local/share/applications", home));
-        dirs.push(format!("{}/.local/share/flatpak/exports/share/applications", home));
-        dirs.push("/var/lib/flatpak/exports/share/applications".to_string());
+    #[cfg(target_os = "windows")]
+    {
+        // Windows: Program Files ve Program Files (x86) tara
+        let program_dirs = vec![
+            "C:\\Program Files",
+            "C:\\Program Files (x86)",
+            "C:\\Users\\{}\\AppData\\Local\\Programs",
+        ];
+        
+        for dir_template in program_dirs {
+            let home = std::env::var("USERPROFILE").unwrap_or_else(|_| "C:\\Users\\Default".to_string());
+            let dir = dir_template.replace("{}", &home);
+            if let Ok(entries) = std::fs::read_dir(&dir) {
+                for entry in entries.flatten() {
+                    let path = entry.path();
+                    if path.is_dir() {
+                        // .exe dosyalarını ara
+                        if let Ok(exe_entries) = std::fs::read_dir(&path) {
+                            for exe in exe_entries.flatten() {
+                                let exe_path = exe.path();
+                                if exe_path.extension().map_or(false, |e| e == "exe") {
+                                    if let Some(name) = exe_path.file_stem().map(|s| s.to_string_lossy().to_string()) {
+                                        if !name.is_empty() && !name.contains("uninstall") && !name.contains("installer") {
+                                            apps.insert(name.to_lowercase(), AppInfo {
+                                                name: name.clone(),
+                                                path: exe_path.clone(),
+                                                icon: "📱".to_string(),
+                                                exec: exe_path.to_string_lossy().to_string(),
+                                            });
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
     }
-    for dir in &dirs {
-        if let Ok(entries) = std::fs::read_dir(dir) {
-            for entry in entries.flatten() {
-                let path = entry.path();
-                if path.extension().map_or(false, |e| e == "desktop") {
-                    if let Some(app) = parse_desktop_file(&path) {
-                        apps.insert(app.name.to_lowercase(), app);
+
+    #[cfg(target_os = "linux")]
+    {
+        // Linux: mevcut kodun aynısı
+        let mut dirs = vec![
+            "/usr/share/applications".to_string(),
+            "/usr/local/share/applications".to_string(),
+        ];
+        if let Ok(home) = std::env::var("HOME") {
+            dirs.push(format!("{}/.local/share/applications", home));
+            dirs.push(format!("{}/.local/share/flatpak/exports/share/applications", home));
+            dirs.push("/var/lib/flatpak/exports/share/applications".to_string());
+        }
+        for dir in &dirs {
+            if let Ok(entries) = std::fs::read_dir(dir) {
+                for entry in entries.flatten() {
+                    let path = entry.path();
+                    if path.extension().map_or(false, |e| e == "desktop") {
+                        if let Some(app) = parse_desktop_file(&path) {
+                            apps.insert(app.name.to_lowercase(), app);
+                        }
                     }
                 }
             }
@@ -760,117 +804,257 @@ fn get_system_info() -> Result<serde_json::Value, String> {
         "temperature": "—"
     });
 
-    // OS & Kernel
-    if let Ok(os) = std::fs::read_to_string("/etc/os-release") {
-        for line in os.lines() {
-            if line.starts_with("PRETTY_NAME=") {
-                info["os"] = serde_json::json!(line.split('=').nth(1).unwrap_or("Unknown").trim_matches('"'));
+    #[cfg(target_os = "linux")]
+    {
+        // OS & Kernel
+        if let Ok(os) = std::fs::read_to_string("/etc/os-release") {
+            for line in os.lines() {
+                if line.starts_with("PRETTY_NAME=") {
+                    info["os"] = serde_json::json!(line.split('=').nth(1).unwrap_or("Unknown").trim_matches('"'));
+                }
+            }
+        }
+        if let Ok(kernel) = std::fs::read_to_string("/proc/version") {
+            let k = kernel.split_whitespace().nth(2).unwrap_or("Unknown");
+            info["kernel"] = serde_json::json!(k);
+        }
+
+        // Hostname
+        if let Ok(host) = std::fs::read_to_string("/etc/hostname") {
+            info["hostname"] = serde_json::json!(host.trim());
+        }
+
+        // Uptime + Load Average
+        if let Ok(up) = std::fs::read_to_string("/proc/uptime") {
+            if let Some(seconds_str) = up.split('.').next() {
+                if let Ok(seconds) = seconds_str.parse::<u64>() {
+                    let hours = seconds / 3600;
+                    let mins = (seconds % 3600) / 60;
+                    info["uptime"] = serde_json::json!(format!("{}h {}m", hours, mins));
+                }
+            }
+        }
+        if let Ok(load) = std::fs::read_to_string("/proc/loadavg") {
+            let parts: Vec<&str> = load.split_whitespace().collect();
+            if !parts.is_empty() {
+                info["loadavg"] = serde_json::json!(parts[0..3].join(" "));
+            }
+        }
+
+        // CPU
+        if let Ok(cpuinfo) = std::fs::read_to_string("/proc/cpuinfo") {
+            let cores = cpuinfo.lines().filter(|l| l.starts_with("processor")).count();
+            let model = cpuinfo.lines()
+                .find(|l| l.starts_with("model name"))
+                .and_then(|l| l.split(':').nth(1))
+                .unwrap_or("Unknown")
+                .trim();
+            info["cpu"]["name"] = serde_json::json!(model);
+            info["cpu"]["cores"] = serde_json::json!(cores);
+        }
+
+        // RAM
+        if let Ok(meminfo) = std::fs::read_to_string("/proc/meminfo") {
+            let get_kb = |key: &str| -> f64 {
+                meminfo.lines()
+                    .find(|l| l.starts_with(key))
+                    .and_then(|l| l.split_whitespace().nth(1))
+                    .and_then(|v| v.parse().ok())
+                    .unwrap_or(0.0)
+            };
+            let total = get_kb("MemTotal");
+            let avail = get_kb("MemAvailable");
+            let percent = if total > 0.0 { ((total - avail) / total * 100.0) as u32 } else { 0 };
+
+            info["ram"] = serde_json::json!({
+                "total": format!("{:.1} GB", total / 1024.0 / 1024.0),
+                "available": format!("{:.1} GB", avail / 1024.0 / 1024.0),
+                "percent": percent
+            });
+        }
+
+        // Swap
+        if let Ok(meminfo) = std::fs::read_to_string("/proc/meminfo") {
+            let get_kb = |key: &str| -> f64 {
+                meminfo.lines()
+                    .find(|l| l.starts_with(key))
+                    .and_then(|l| l.split_whitespace().nth(1))
+                    .and_then(|v| v.parse().ok())
+                    .unwrap_or(0.0)
+            };
+            let sw_total = get_kb("SwapTotal");
+            let sw_free = get_kb("SwapFree");
+            let sw_percent = if sw_total > 0.0 { ((sw_total - sw_free) / sw_total * 100.0) as u32 } else { 0 };
+
+            info["swap"] = serde_json::json!({
+                "total": format!("{:.1} GB", sw_total / 1024.0 / 1024.0),
+                "free": format!("{:.1} GB", sw_free / 1024.0 / 1024.0),
+                "percent": sw_percent
+            });
+        }
+
+        // Disk
+        if let Ok(output) = std::process::Command::new("df").arg("-h").arg("/").output() {
+            let df = String::from_utf8_lossy(&output.stdout);
+            if let Some(line) = df.lines().nth(1) {
+                let parts: Vec<&str> = line.split_whitespace().collect();
+                if parts.len() >= 5 {
+                    let percent = parts[4].trim_end_matches('%').parse::<u32>().unwrap_or(0);
+                    info["disk"] = serde_json::json!({
+                        "total": parts[1],
+                        "free": parts[3],
+                        "percent": percent
+                    });
+                }
+            }
+        }
+
+        // Temperature
+        if let Ok(output) = std::process::Command::new("sensors").output() {
+            let temp_str = String::from_utf8_lossy(&output.stdout);
+            if let Some(line) = temp_str.lines().find(|l| l.contains("Core 0") || l.contains("CPU")) {
+                if let Some(temp) = line.split(':').nth(1).and_then(|s| s.split('°').next()) {
+                    info["temperature"] = serde_json::json!(temp.trim());
+                }
             }
         }
     }
-    if let Ok(kernel) = std::fs::read_to_string("/proc/version") {
-        let k = kernel.split_whitespace().nth(2).unwrap_or("Unknown");
-        info["kernel"] = serde_json::json!(k);
-    }
 
-    // Hostname
-    if let Ok(host) = std::fs::read_to_string("/etc/hostname") {
-        info["hostname"] = serde_json::json!(host.trim());
-    }
+    #[cfg(target_os = "windows")]
+    {
+        use winapi::um::sysinfoapi::{GetComputerNameExW, ComputerNameDnsHostname, GetSystemInfo, SYSTEM_INFO};
+use winapi::um::winbase::{GlobalMemoryStatus, MEMORYSTATUS};
+use winapi::um::sysinfoapi::GetTickCount;
+use winapi::um::fileapi::GetDiskFreeSpaceExW;
+use winapi::um::winnt::ULARGE_INTEGER;
 
-    // Uptime + Load Average
-    if let Ok(up) = std::fs::read_to_string("/proc/uptime") {
-        if let Some(seconds_str) = up.split('.').next() {
-            if let Ok(seconds) = seconds_str.parse::<u64>() {
-                let hours = seconds / 3600;
-                let mins = (seconds % 3600) / 60;
-                info["uptime"] = serde_json::json!(format!("{}s {}d", hours, mins));
+        // OS
+        info["os"] = serde_json::json!("Windows");
+
+        // Kernel (Windows sürümü)
+        if let Ok(version) = std::process::Command::new("cmd").args(["/c", "ver"]).output() {
+            let ver_str = String::from_utf8_lossy(&version.stdout);
+            let kernel = ver_str.lines().next().unwrap_or("Unknown").trim();
+            info["kernel"] = serde_json::json!(kernel);
+        }
+
+        // Hostname
+        unsafe {
+            let mut buffer: [u16; 256] = [0; 256];
+            let mut size = 256;
+            if GetComputerNameExW(ComputerNameDnsHostname, buffer.as_mut_ptr(), &mut size) != 0 {
+                let hostname = String::from_utf16_lossy(&buffer[..size as usize]);
+                info["hostname"] = serde_json::json!(hostname);
             }
         }
-    }
-    if let Ok(load) = std::fs::read_to_string("/proc/loadavg") {
-        let parts: Vec<&str> = load.split_whitespace().collect();
-        if !parts.is_empty() {
-            info["loadavg"] = serde_json::json!(parts[0..3].join(" "));
+
+        // Uptime
+        unsafe {
+            let uptime_ms = GetTickCount() as u64;
+            let uptime_sec = uptime_ms / 1000;
+            let hours = uptime_sec / 3600;
+            let mins = (uptime_sec % 3600) / 60;
+            info["uptime"] = serde_json::json!(format!("{}h {}m", hours, mins));
         }
-    }
 
-    // CPU
-    if let Ok(cpuinfo) = std::fs::read_to_string("/proc/cpuinfo") {
-        let cores = cpuinfo.lines().filter(|l| l.starts_with("processor")).count();
-        let model = cpuinfo.lines()
-            .find(|l| l.starts_with("model name"))
-            .and_then(|l| l.split(':').nth(1))
-            .unwrap_or("Unknown")
-            .trim();
-        info["cpu"]["name"] = serde_json::json!(model);
-        info["cpu"]["cores"] = serde_json::json!(cores);
-    }
+        // CPU
+        unsafe {
+            let mut sys_info: SYSTEM_INFO = std::mem::zeroed();
+            GetSystemInfo(&mut sys_info);
+            let cores = sys_info.dwNumberOfProcessors;
+            info["cpu"]["cores"] = serde_json::json!(cores);
+            
+            // CPU adını registry'den al
+            if let Ok(cpu_name) = std::process::Command::new("wmic")
+                .args(["cpu", "get", "name", "/format:csv"])
+                .output() {
+                let cpu_str = String::from_utf8_lossy(&cpu_name.stdout);
+                for line in cpu_str.lines() {
+                    if line.contains("Name") || line.is_empty() { continue; }
+                    let parts: Vec<&str> = line.split(',').collect();
+                    if parts.len() >= 2 {
+                        info["cpu"]["name"] = serde_json::json!(parts[1].trim());
+                        break;
+                    }
+                }
+            }
+            if info["cpu"]["name"] == "Unknown" {
+                info["cpu"]["name"] = serde_json::json!("Windows CPU");
+            }
+        }
 
-    // RAM
-    if let Ok(meminfo) = std::fs::read_to_string("/proc/meminfo") {
-        let get_kb = |key: &str| -> f64 {
-            meminfo.lines()
-                .find(|l| l.starts_with(key))
-                .and_then(|l| l.split_whitespace().nth(1))
-                .and_then(|v| v.parse().ok())
-                .unwrap_or(0.0)
-        };
-        let total = get_kb("MemTotal");
-        let avail = get_kb("MemAvailable");
-        let percent = if total > 0.0 { ((total - avail) / total * 100.0) as u32 } else { 0 };
+        // RAM
+        unsafe {
+    let mut mem_status: MEMORYSTATUS = std::mem::zeroed();
+    mem_status.dwLength = std::mem::size_of::<MEMORYSTATUS>() as u32;
+    GlobalMemoryStatus(&mut mem_status);
+    let total = mem_status.dwTotalPhys as f64 / (1024.0 * 1024.0 * 1024.0);
+    let avail = mem_status.dwAvailPhys as f64 / (1024.0 * 1024.0 * 1024.0);
+    let used = total - avail;
+    let percent = (used / total * 100.0) as u32;
+    info["ram"] = serde_json::json!({
+        "total": format!("{:.1} GB", total),
+        "available": format!("{:.1} GB", avail),
+        "percent": percent
+    });
+}
 
-        info["ram"] = serde_json::json!({
-            "total": format!("{:.1} GB", total / 1024.0 / 1024.0),
-            "available": format!("{:.1} GB", avail / 1024.0 / 1024.0),
-            "percent": percent
-        });
-    }
+        // Swap (Windows'ta pagefile olarak)
+        if let Ok(output) = std::process::Command::new("wmic")
+            .args(["pagefile", "get", "AllocatedBaseSize,CurrentUsage"])
+            .output() {
+            let swap_str = String::from_utf8_lossy(&output.stdout);
+            for line in swap_str.lines() {
+                if line.contains("AllocatedBaseSize") || line.is_empty() { continue; }
+                let parts: Vec<&str> = line.split_whitespace().collect();
+                if parts.len() >= 2 {
+                    if let (Ok(total), Ok(used)) = (parts[0].parse::<f64>(), parts[1].parse::<f64>()) {
+                        let total_gb = total / 1024.0;
+                        let free_gb = (total - used) / 1024.0;
+                        let percent = (used / total * 100.0) as u32;
+                        info["swap"] = serde_json::json!({
+                            "total": format!("{:.1} GB", total_gb),
+                            "free": format!("{:.1} GB", free_gb),
+                            "percent": percent
+                        });
+                    }
+                }
+            }
+        }
+        if info["swap"]["total"] == "?" {
+            info["swap"] = serde_json::json!({
+                "total": "0 GB",
+                "free": "0 GB",
+                "percent": 0
+            });
+        }
 
-    // Swap
-    if let Ok(meminfo) = std::fs::read_to_string("/proc/meminfo") {
-        let get_kb = |key: &str| -> f64 {
-            meminfo.lines()
-                .find(|l| l.starts_with(key))
-                .and_then(|l| l.split_whitespace().nth(1))
-                .and_then(|v| v.parse().ok())
-                .unwrap_or(0.0)
-        };
-        let sw_total = get_kb("SwapTotal");
-        let sw_free = get_kb("SwapFree");
-        let sw_percent = if sw_total > 0.0 { ((sw_total - sw_free) / sw_total * 100.0) as u32 } else { 0 };
-
-        info["swap"] = serde_json::json!({
-            "total": format!("{:.1} GB", sw_total / 1024.0 / 1024.0),
-            "free": format!("{:.1} GB", sw_free / 1024.0 / 1024.0),
-            "percent": sw_percent
-        });
-    }
-
-    // Disk
-    if let Ok(output) = std::process::Command::new("df").arg("-h").arg("/").output() {
-        let df = String::from_utf8_lossy(&output.stdout);
-        if let Some(line) = df.lines().nth(1) {
-            let parts: Vec<&str> = line.split_whitespace().collect();
-            if parts.len() >= 5 {
-                let percent = parts[4].trim_end_matches('%').parse::<u32>().unwrap_or(0);
+        // Disk (C: sürücüsü)
+        unsafe {
+            let drive = "C:\\";
+            let drive_w: Vec<u16> = drive.encode_utf16().chain(Some(0)).collect();
+            let mut free_bytes: ULARGE_INTEGER = std::mem::zeroed();
+            let mut total_bytes: ULARGE_INTEGER = std::mem::zeroed();
+            let mut total_free_bytes: ULARGE_INTEGER = std::mem::zeroed();
+            
+            if GetDiskFreeSpaceExW(drive_w.as_ptr(), &mut free_bytes, &mut total_bytes, &mut total_free_bytes) != 0 {
+                let total = *total_bytes.QuadPart() as f64 / (1024.0 * 1024.0 * 1024.0);
+                let free = *total_free_bytes.QuadPart() as f64 / (1024.0 * 1024.0 * 1024.0);
+                let used = total - free;
+                let percent = (used / total * 100.0) as u32;
                 info["disk"] = serde_json::json!({
-                    "total": parts[1],
-                    "free": parts[3],
+                    "total": format!("{:.1} GB", total),
+                    "free": format!("{:.1} GB", free),
                     "percent": percent
                 });
             }
         }
-    }
 
-    // Sıcaklık (sensors komutu varsa)
-    if let Ok(output) = std::process::Command::new("sensors").output() {
-        let temp_str = String::from_utf8_lossy(&output.stdout);
-        if let Some(line) = temp_str.lines().find(|l| l.contains("Core 0") || l.contains("CPU")) {
-            if let Some(temp) = line.split(':').nth(1).and_then(|s| s.split('°').next()) {
-                info["temperature"] = serde_json::json!(temp.trim());
-            }
-        }
+        // Network
+        info["network"] = serde_json::json!("Bağlı");
+
+        // Temperature (Windows'ta genelde yok)
+        info["temperature"] = serde_json::json!("—");
     }
 
     Ok(info)

@@ -390,14 +390,14 @@ async function copyEmoji(emoji) {
 
             <div class="settings-divider"></div>
             <div class="settings-section-title">{t.settings.about}</div>
-            <div class="about-row"><span class="about-key">{t.settings.version}</span><span class="about-val">Beta v1.2</span></div>
+            <div class="about-row"><span class="about-key">{t.settings.version}</span><span class="about-val">Beta v1.3</span></div>
             <div class="about-row"><span class="about-key">{t.settings.developer}</span><span class="about-val">Wrenchiz</span></div>
             <div class="about-row"><span class="about-key">{t.settings.engine}</span><span class="about-val">Tauri v2 + Svelte</span></div>
 
             <div class="made-with">
               <span>{t.settings.madeWith}</span>
               <span>{t.settings.by}</span>
-              <span class="studio-link" on:click={() => invoke('open_file', { path: 'https://codex-studio-hq.netlify.app/' })} role="link" tabindex="0" on:keydown={(e) => e.key === 'Enter' && invoke('open_file', { path: 'https://codex-studio-hq.netlify.app/' })}>codeX Studio</span>
+              <span class="studio-link" on:click={() => invoke('open_file', { path: 'https://phantomware.netlify.app/' })} role="link" tabindex="0" on:keydown={(e) => e.key === 'Enter' && invoke('open_file', { path: 'https://phantomware.netlify.app/' })}>Phantomware</span>
             </div>
 
           </div>
