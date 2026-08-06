@@ -4,8 +4,8 @@
 Made With ❤️ by **Phantomware**  
 > **Developer:** Wrenchiz  
 > **Version:** Beta v1.3  
-> **Download for Windows (Portable):** [Universal Launcher Beta v1.3 for Windows (Portable)](https://github.com/codeX-Studio-HQ/Universal/releases/download/v1.2/Universal_Launcher_Beta_v1_2_Windows_Portable.zip)  
-> **Download for Linux:** [Universal Launcher Beta v1.3 for Linux](https://github.com/codeX-Studio-HQ/Universal/releases/download/v1.2/Universal_Launcher_Beta_v1_2_Linux.zip)  
+> **Download for Windows (Portable):** [Universal Launcher Beta v1.3 for Windows (Portable)](https://github.com/Phantomware-HQ/Universal/releases/download/v1.3/Universal_Launcher_Beta_v1_3_Windows_Portable.zip)  
+> **Download for Linux:** [Universal Launcher Beta v1.3 for Linux](https://github.com/Phantomware-HQ/Universal/releases/download/v1.3/Universal_Launcher_Beta_v1_3_Linux_Portable.zip)  
 
 ---
 
