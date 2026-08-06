@@ -1,4 +1,4 @@
-<img src="art/Universal.png" width="300" alt="UniversalLogo">
+<img src="art/Unive.png" width="300" alt="UniversalLogo">
 
 # Universal (Beta v1.3)  
 Made With ❤️ by **Phantomware**  
