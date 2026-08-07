@@ -26,6 +26,8 @@ Made With ❤️ by **Phantomware**
 <img src="art/ss/7.png" width="100%">
 <br><br>
 <img src="art/ss/8.png" width="100%">
+<br><br>
+<img src="art/ss/9.png" width="100%">
 
 ---
 
