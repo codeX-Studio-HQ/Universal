@@ -4,7 +4,7 @@
 
 <br />
 
-<img src="https://static.vecteezy.com/system/resources/previews/017/177/732/non_2x/stop-road-sign-on-transparent-background-free-png.png" alt="Stop Sign" width="250" />
+<img src="https://upload.wikimedia.org/wikipedia/commons/thumb/1/1d/Red_copyright.svg/250px-Red_copyright.svg.png?utm_source=commons.wikimedia.org&utm_campaign=index&utm_content=thumbnail&_=20081001132737" alt="Stop Sign" width="150" />
 
 ### PROPRIETARY SOURCE-AVAILABLE LICENSE
 
