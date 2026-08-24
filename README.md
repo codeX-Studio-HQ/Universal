@@ -41,7 +41,8 @@ Made With ❤️ by **Phantomware**
 
 ## ⚖️ License
 
-This project is licensed under the **CC BY-NC-ND 4.0** License. 
-See the [LICENSE](https://github.com/codeX-Studio-HQ/Universal?tab=License-1-ov-file) file for the full legal text.
+This project is licensed under a **Proprietary Source-Available License**.  
+Source code is made publicly visible solely for transparency, security auditing, and verification purposes.  
+See the [LICENSE](LICENSE.md) file for full terms and conditions.
 
-© 2026 Phantomware
+© 2026 **Phantomware**. All rights reserved.
