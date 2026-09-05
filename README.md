@@ -1,11 +1,11 @@
 <img src="art/Universal.png" width="300" alt="UniversalLogo">
 
-# Universal (Beta v1.3)  
+# Universal (v0.4.0-beta)  
 Made With ❤️ by **Phantomware**  
 > **Developer:** Wrenchiz  
-> **Version:** Beta v1.3  
-> **Download for Windows (Portable):** [Universal Launcher Beta v1.3 for Windows (Portable)](https://github.com/Phantomware-HQ/Universal/releases/download/v1.3/Universal_Launcher_Beta_v1_3_Windows_Portable.zip)  
-> **Download for Linux (Portable):** [Universal Launcher Beta v1.3 for Linux (Portable)](https://github.com/Phantomware-HQ/Universal/releases/download/v1.3/Universal_Launcher_Beta_v1_3_Linux_Portable.zip)  
+> **Version:** v0.4.0-beta  
+> **Download for Windows (Portable):** [Universal Launcher Beta v0.4.0-beta for Windows (Portable)](https://github.com/Phantomware-HQ/Universal/releases/download/v1.3/Universal_Launcher_Beta_v1_3_Windows_Portable.zip)  
+> **Download for Linux (Portable):** [Universal Launcher Beta v0.4.0-beta for Linux (Portable)](https://github.com/Phantomware-HQ/Universal/releases/download/v1.3/Universal_Launcher_Beta_v1_3_Linux_Portable.zip)  
 
 ---
 
