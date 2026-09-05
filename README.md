@@ -4,8 +4,8 @@
 Made With ❤️ by **Phantomware**  
 > **Developer:** Wrenchiz  
 > **Version:** v0.4.0-beta  
-> **Download for Windows (Portable):** [Universal Launcher Beta v0.4.0-beta for Windows (Portable)](https://github.com/Phantomware-HQ/Universal/releases/download/v1.3/Universal_Launcher_Beta_v1_3_Windows_Portable.zip)  
-> **Download for Linux (Portable):** [Universal Launcher Beta v0.4.0-beta for Linux (Portable)](https://github.com/Phantomware-HQ/Universal/releases/download/v1.3/Universal_Launcher_Beta_v1_3_Linux_Portable.zip)  
+> **Download for Windows (Portable):** [Universal Launcher Beta v0.4.0-beta for Windows (Portable)](https://github.com/Phantomware-HQ/Universal/releases/download/v0.4.0-beta/Universal_Launcher_v0_4_0_beta_Windows_Portable.zip)  
+> **Download for Linux (Portable):** [Universal Launcher Beta v0.4.0-beta for Linux (Portable)](https://github.com/Phantomware-HQ/Universal/releases/download/v0.4.0-beta/Universal_Launcher_v0_4_0_beta_Linux_Portable.zip)  
 
 ---
 
